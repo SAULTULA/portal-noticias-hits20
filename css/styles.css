@@ -1,0 +1,736 @@
+﻿/* ==========================================
+   ESTILOS GENERALES DEL PORTAL DE NOTICIAS
+   ========================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f4f6f9;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Cabecera Principal - Ajustada al 95% */
+.main-header {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    padding: 0 15px;
+    border-bottom: 4px solid #d9534f;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    height: auto;
+    width: 100%;
+}
+
+.header-content {
+    max-width: none;
+    width: 95%;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0;
+}
+
+/* Contenedor Izquierdo: Logo y Título */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-logo {
+    height: 130px;
+    width: auto;
+    object-fit: contain;
+    display: block; 
+    margin: 0;      
+    padding: 0;
+}
+
+.main-header h1 {
+    font-size: 2.2rem;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+}
+
+/* Estilos para las Redes Sociales en la Cabecera */
+.header-socials {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-social-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+}
+
+.header-social-btn:hover {
+    transform: translateY(-3px);
+}
+
+.header-social-btn span {
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.header-social-btn:hover span {
+    opacity: 1;
+}
+
+/* Contenedor de iconos vectoriales con efecto sello de agua por defecto */
+.social-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+}
+
+.social-icon-box svg,
+.social-icon-box svg path {
+    width: 24px;
+    height: 24px;
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    opacity: 0.5;
+    transition: all 0.3s ease;
+}
+
+/* Efectos al pasar el cursor: Colores corporativos originales independientes */
+.header-social-btn:hover .fb-water { 
+    background-color: #0866ff; 
+    border-color: #0866ff;
+    box-shadow: 0 0 12px rgba(8, 102, 255, 0.5);
+}
+
+.header-social-btn:hover .ig-water { 
+    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #df4996 45%, #a51b85 60%, #3a559f 90%); 
+    border-color: transparent;
+    box-shadow: 0 0 12px rgba(223, 73, 150, 0.5);
+}
+
+.header-social-btn:hover .threads-water { 
+    background-color: #000000; 
+    border-color: #555;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
+.header-social-btn:hover .yt-water { 
+    background-color: #ff0000; 
+    border-color: #ff0000;
+    box-shadow: 0 0 12px rgba(255, 0, 0, 0.5);
+}
+
+.header-social-btn:hover .social-icon-box svg,
+.header-social-btn:hover .social-icon-box svg path {
+    opacity: 1 !important;
+    fill: #ffffff !important;
+}
+
+/* Contenedor Principal (Ajustado exactamente al 95% de ancho) */
+.main-container {
+    display: flex;
+    max-width: none;
+    width: 95%;
+    margin: 20px auto;
+    padding: 0;
+    gap: 25px;
+    flex: 1;
+}
+
+/* Área Central de Noticias */
+#noticias-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.categoria-section h2 {
+    font-size: 1.3rem;
+    color: #1a1a1a;
+    border-left: none;
+    padding-left: 0;
+    border-bottom: 3px solid #d9534f;
+    padding-bottom: 6px;
+    margin-bottom: 15px;
+}
+
+/* Grilla de Tarjetas */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+/* Tarjeta Individual de Noticia */
+.card {
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+}
+
+.card-body {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-desc {
+    font-size: 0.82rem;
+    color: #666;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Barra Lateral Derecha (Sidebar) */
+.sidebar {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex-shrink: 0;
+}
+
+/* Widget del Buscador */
+.search-widget input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-widget input:focus {
+    border-color: #d9534f;
+}
+
+/* Widget de Radio en Vivo */
+.radio-widget {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.radio-logo {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+    margin-bottom: 12px;
+}
+
+.btn-live {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.btn-live:hover {
+    background-color: #c9302c;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    background-color: #fff;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.5; }
+    100% { transform: scale(0.95); opacity: 1; }
+}
+
+/* ESTILOS DEL WIDGET DE CONTACTO (SIDEBAR) */
+.contact-widget {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.contact-widget h3 {
+    font-size: 1.1rem;
+    color: #1a1a1a;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #d9534f;
+    padding-bottom: 5px;
+}
+
+.contact-widget form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.contact-widget input, 
+.contact-widget textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.contact-widget input:focus, 
+.contact-widget textarea:focus {
+    border-color: #d9534f;
+}
+
+.contact-widget textarea {
+    height: 80px;
+    resize: vertical;
+}
+
+.contact-widget button {
+    background: #d9534f;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.contact-widget button:hover {
+    background: #c9302c;
+}
+
+/* Espacios Publicitarios / Flyers */
+.ads {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.ad-slot {
+    background: #e9ecef;
+    border: 2px dashed #ced4da;
+    border-radius: 8px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.9rem;
+    padding: 10px;
+}
+
+/* ==========================================
+   BOTÓN DE INICIO DE SESIÓN (SIDEBAR)
+   ========================================== */
+.sidebar a[href="login.html"] {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: bold;
+    display: block;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar a[href="login.html"]:hover {
+    background-color: #000;
+    transform: translateY(-2px);
+}
+
+/* ==========================================
+   ESTILOS PARA PWA Y BOTÓN DE INSTALACIÓN
+   ========================================== */
+#btn-instalar {
+    display: none; /* JS agrega la clase .visible cuando el navegador permite instalar */
+    width: 100%;
+    background-color: #d9534f;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+#btn-instalar.visible {
+    display: flex;
+}
+
+#btn-instalar:hover {
+    background-color: #c9302c !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+}
+
+/* Modal / Ventana Emergente de Noticia */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+}
+
+.close-btn:hover {
+    color: #000;
+}
+
+.badge {
+    background-color: #d9534f;
+    color: white;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.modal-content h2 {
+    margin: 10px 0 15px 0;
+    font-size: 1.4rem;
+    color: #1a1a1a;
+}
+
+.modal-content img {
+    width: 100%;
+    max-height: 350px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+
+.modal-content p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #444;
+}
+
+/* ==========================================
+   ESTILOS DEL REPRODUCTOR DE RADIO FLOTANTE (ARRASTRABLE)
+   ========================================== */
+.radio-flotante-container {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    z-index: 2000;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.radio-flotante-header {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border-bottom: 3px solid #d9534f;
+    cursor: grab;
+    user-select: none;
+}
+
+.radio-flotante-header:active {
+    cursor: grabbing;
+}
+
+.radio-flotante-close {
+    cursor: pointer;
+    font-size: 1.4rem;
+    color: #aaa;
+    line-height: 1;
+}
+
+.radio-flotante-close:hover {
+    color: #fff;
+}
+
+.radio-flotante-body {
+    padding: 15px;
+    background: #f9f9f9;
+    text-align: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   ESTILOS PARA BOTÓN Y MODAL DE OTRAS LOCALIDADES
+   ========================================== */
+.btn-otras-loc {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-otras-loc:hover {
+    background-color: #c9302c;
+}
+
+.modal-loc-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
+.modal-loc-content {
+    background: #1a1a1a;
+    width: 100%;
+    max-width: 800px;
+    max-height: 85vh;
+    border-radius: 8px;
+    border: 1px solid #d9534f;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+.modal-loc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #333;
+    color: #fff;
+}
+
+.modal-loc-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #d9534f;
+}
+
+.modal-loc-close {
+    font-size: 1.8rem;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-loc-close:hover {
+    color: #d9534f;
+}
+
+.modal-loc-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal-loc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.modal-loc-grid .weather-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    font-size: 0.85rem;
+    width: 100%;
+}
+
+/* Ajustes específicos para el panel de administración en móviles */
+@media (max-width: 600px) {
+    .admin-container {
+        padding: 15px !important;
+        margin: 10px !important;
+        width: auto !important;
+    }
+
+    form#form-admin-noticia {
+        padding: 15px !important;
+    }
+
+    input, select, textarea {
+        font-size: 16px !important; /* Evita el zoom automático en iOS */
+    }
+}
+
+/* Diseño Adaptativo (Responsive para Celulares y Tablets) */
+@media (max-width: 900px) {
+    .main-container, .header-content {
+        width: 95%;
+    }
+    .sidebar {
+        width: 100%;
+    }
+    .radio-flotante-container {
+        width: calc(100% - 30px);
+        left: 15px;
+        right: 15px;
+        bottom: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-header {
+        padding: 0 10px;
+    }
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+        justify-content: center;
+        gap: 15px;
+        padding: 15px 0;
+        width: 95%;
+    }
+    .header-left {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .header-logo {
+        height: 100px;
+    }
+    .main-header h1 {
+        font-size: 1.5rem;
+    }
+    .header-socials {
+        justify-content: center;
+        margin-top: 5px;
+    }
+    .sidebar {
+        padding: 10px;
+    }
+    #btn-instalar, 
+    .sidebar a[href="login.html"] {
+        font-size: 1rem;
+        padding: 14px;
+    }
+}
