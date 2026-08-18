@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Portal de Noticias & Radio En Vivo</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <style>
         /* Estilos para la barra de clima en vivo */
         .weather-ticker-container {
@@ -59,10 +59,6 @@
             font-weight: bold;
             color: #f0f0f0;
         }
-
-        /* El reproductor flotante ahora usa las clases .radio-flotante-container /
-           .radio-flotante-header ya definidas en css/styles.css (incluye su propio
-           ajuste responsive a 900px), por eso no se duplican esos estilos acá. */
 
         .contador-widget {
             width: 100%;
@@ -176,7 +172,7 @@
                 </button>
             </div>
 
-            <!-- Contador de Visitas Ajustado al 100% (Ancho del formulario) -->
+            <!-- Contador de Visitas Ajustado al 100% -->
             <div class="contador-widget" style="margin-top: 15px; text-align: center;">
                 <iframe src="https://contador-red-delta.vercel.app/widget.html?id=PORTAL%20DE%20NOTICIAS%20HITS20&t=1787066414602" width="300" height="246" frameborder="0" scrolling="no" style="border:none; overflow:hidden;"></iframe>
             </div>
@@ -344,7 +340,6 @@
 
     <!-- REGISTRO DEL SERVICE WORKER Y BOTÓN DE INSTALAR APP (PWA) -->
     <script>
-        // Registrar el Service Worker para habilitar la instalación y el modo offline
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
@@ -352,15 +347,12 @@
             });
         }
 
-        // Lógica del botón "Instalar App"
         let deferredPrompt = null;
         const btnInstalar = document.getElementById('btn-instalar');
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Evita que Chrome muestre su propio mini-infobar automáticamente
             e.preventDefault();
             deferredPrompt = e;
-            // Mostramos nuestro botón solo cuando el navegador confirma que se puede instalar
             btnInstalar.classList.add('visible');
         });
 
@@ -374,13 +366,11 @@
             btnInstalar.classList.remove('visible');
         });
 
-        // Si la app ya fue instalada, ocultamos el botón definitivamente
         window.addEventListener('appinstalled', () => {
             btnInstalar.classList.remove('visible');
             deferredPrompt = null;
         });
 
-        // Si el navegador ya reporta que se ejecuta en modo standalone (ya instalada), no mostramos el botón
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
             btnInstalar.classList.remove('visible');
         }
