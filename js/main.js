@@ -64,7 +64,7 @@ function obtenerUrlMultimedia(rawMultimedia, urlEnlace) {
 }
 
 // -------------------------------------------------------------
-// FILTRO DE NOTICIAS RECIENTES (48 HORAS)
+// FILTRO DE NOTICIAS RECIENTES (HASTA 3 DÍAS / 72 HORAS)
 // -------------------------------------------------------------
 function esNoticiaReciente(fechaRaw) {
     if (!fechaRaw) return true;
@@ -74,14 +74,14 @@ function esNoticiaReciente(fechaRaw) {
         
         const ahora = new Date();
         const diferenciaHoras = (ahora - fechaNoticia) / (1000 * 60 * 60);
-        return diferenciaHoras <= 48;
+        return diferenciaHoras <= 72; // Hasta 3 días de antigüedad
     } catch (e) {
         return true;
     }
 }
 
 // -------------------------------------------------------------
-// 1. NOTICIAS DEL PORTAL
+// 1. NOTICIAS DEL PORTAL (MÁXIMO 6 POR SECCIÓN)
 // -------------------------------------------------------------
 function cargarNoticiasPortal() {
     fetch(urlAPI)
@@ -89,6 +89,7 @@ function cargarNoticiasPortal() {
         .then(data => {
             if (!Array.isArray(data)) return;
             
+            // Filtrar noticias publicadas en las últimas 72 horas
             todasLasNoticias = data.filter(n => {
                 let fecha = obtenerValorPropiedad(n, ['fecha', 'Fecha', 'date']);
                 return esNoticiaReciente(fecha);
@@ -116,8 +117,19 @@ function renderizarNoticias(noticias) {
     if (gridNacionales) gridNacionales.innerHTML = '';
     if (gridInternacionales) gridInternacionales.innerHTML = '';
 
+    // Contadores para limitar a un máximo de 6 noticias por categoría
+    let contProvincial = 0;
+    let contNacional = 0;
+    let contInternacional = 0;
+
     noticias.forEach(noticia => {
         const cat = (obtenerValorPropiedad(noticia, ['categoria', 'Categoría']) || 'General').trim().toLowerCase();
+
+        // Control de límite (máximo 6 por cada sección)
+        if (cat === 'provincial' && contProvincial >= 6) return;
+        if (cat === 'nacional' && contNacional >= 6) return;
+        if (cat === 'internacional' && contInternacional >= 6) return;
+
         const card = document.createElement('article');
         card.className = 'card-noticia';
         card.onclick = () => abrirModalNoticia(noticia);
@@ -142,15 +154,22 @@ function renderizarNoticias(noticias) {
                 ` : ''}
             </div>
             <div class="card-content">
-                <span class="badge">${noticia.categoria || 'General'}</span>
+                <span class="badge">${obtenerValorPropiedad(noticia, ['categoria', 'Categoría']) || 'General'}</span>
                 <span style="font-size: 0.7rem; color: #777; display: block; margin-top: 4px;">${fechaHoraTexto}</span>
                 <h3>${tituloTexto}</h3>
             </div>
         `;
 
-        if (cat === 'provincial' && gridProvinciales) gridProvinciales.appendChild(card);
-        else if (cat === 'nacional' && gridNacionales) gridNacionales.appendChild(card);
-        else if (cat === 'internacional' && gridInternacionales) gridInternacionales.appendChild(card);
+        if (cat === 'provincial' && gridProvinciales) {
+            gridProvinciales.appendChild(card);
+            contProvincial++;
+        } else if (cat === 'nacional' && gridNacionales) {
+            gridNacionales.appendChild(card);
+            contNacional++;
+        } else if (cat === 'internacional' && gridInternacionales) {
+            gridInternacionales.appendChild(card);
+            contInternacional++;
+        }
     });
 }
 
@@ -168,16 +187,24 @@ async function cargarNoticiasMinutoUno() {
         contenedor.innerHTML = '';
 
         let noticiasValidas = Array.isArray(noticias) ? noticias : [];
+
+        // Filtrar por fecha (3 días)
         noticiasValidas = noticiasValidas.filter(noti => {
             let fecha = obtenerValorPropiedad(noti, ['fecha', 'Fecha', 'date']);
             return esNoticiaReciente(fecha);
         });
 
-        // Tomar las últimas 3 noticias
+        // Filtrar filas vacías o defectuosas
+        noticiasValidas = noticiasValidas.filter(noti => {
+            let tit = obtenerValorPropiedad(noti, ['noticia', 'Noticia', 'titulo', 'Título', 'title']);
+            return tit && tit.length > 3 && tit.toLowerCase() !== 'minutouno';
+        });
+
+        // Tomar hasta 3 noticias recientes para el bloque de Minuto 1
         const noticiasMostradas = noticiasValidas.slice(0, 3);
 
         if (noticiasMostradas.length === 0) {
-            contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No hay noticias recientes de Minuto 1 en las últimas 48 horas.</p>';
+            contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No hay noticias recientes de Minuto 1 en los últimos 3 días.</p>';
             return;
         }
 
@@ -193,13 +220,11 @@ async function cargarNoticiasMinutoUno() {
             card.style.justifyContent = 'space-between';
             card.style.cursor = 'pointer';
 
-            // Extracción según tus columnas: Noticia, Enlace, Imagen
-            const tituloTexto = obtenerValorPropiedad(noti, ['noticia', 'Noticia', 'titulo', 'Título', 'title']) || 'Sin Título';
+            const tituloTexto = obtenerValorPropiedad(noti, ['noticia', 'Noticia', 'titulo', 'Título', 'title']);
             const enlaceUrl = obtenerValorPropiedad(noti, ['enlace', 'Enlace', 'link', 'url']) || '#';
             const rawMultimedia = obtenerValorPropiedad(noti, ['imagen', 'Imagen', 'image', 'urlimagen', 'multimedia']);
             const fechaVal = obtenerValorPropiedad(noti, ['fecha', 'Fecha', 'date']);
             
-            // Procesar imagen previa (si es YouTube extrae la carátula)
             const multimediaInfo = obtenerUrlMultimedia(rawMultimedia, enlaceUrl);
             let fechaHoraTexto = formatearFechaYHora(fechaVal, obtenerValorPropiedad(noti, ['hora', 'Hora']));
 
@@ -226,7 +251,6 @@ async function cargarNoticiasMinutoUno() {
                 </div>
             `;
 
-            // Al hacer clic abre la ventana emergente interna (Modal)
             card.onclick = () => {
                 abrirModalNoticia({
                     categoria: 'Minuto 1',
