@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // -------------------------------------------------------------
-// EXTRAER PROPIEDAD IGNO RANDO MAYÚSCULAS/MINÚSCULAS O ESPACIOS
+// BÚSQUEDA ROBUSTA DE CAMPOS EN EL OBJETO DE GOOGLE SHEETS
 // -------------------------------------------------------------
 function obtenerValorPropiedad(obj, llavesPosibles) {
     if (!obj || typeof obj !== 'object') return '';
@@ -35,12 +35,15 @@ function obtenerValorPropiedad(obj, llavesPosibles) {
 }
 
 // -------------------------------------------------------------
-// DETECCIÓN Y EXTRACCIÓN DE MULTIMEDIA / YOUTUBE
+// EXTRAER MINIATURA SI ES IMAGEN O YOUTUBE
 // -------------------------------------------------------------
-function obtenerUrlMultimedia(rawMultimedia) {
-    if (!rawMultimedia || typeof rawMultimedia !== 'string') return { url: imgFallback, esVideo: false };
+function obtenerUrlMultimedia(rawMultimedia, urlEnlace) {
+    let urlAProcesar = rawMultimedia || urlEnlace || '';
+    if (!urlAProcesar || typeof urlAProcesar !== 'string') return { url: imgFallback, esVideo: false };
 
-    let urlTrim = rawMultimedia.trim();
+    let urlTrim = urlAProcesar.trim();
+
+    // Detección de video de YouTube
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = urlTrim.match(regExp);
 
@@ -52,11 +55,16 @@ function obtenerUrlMultimedia(rawMultimedia) {
         };
     }
 
-    return { url: urlTrim, esVideo: false };
+    // Si es una URL de imagen válida o enlace directo
+    if (urlTrim.startsWith('http://') || urlTrim.startsWith('https://') || urlTrim.startsWith('data:image')) {
+        return { url: urlTrim, esVideo: false };
+    }
+
+    return { url: imgFallback, esVideo: false };
 }
 
 // -------------------------------------------------------------
-// FILTRO DE NOTICIAS DE MÁS DE 2 DÍAS (48 HORAS)
+// FILTRO DE NOTICIAS RECIENTES (48 HORAS)
 // -------------------------------------------------------------
 function esNoticiaReciente(fechaRaw) {
     if (!fechaRaw) return true;
@@ -73,7 +81,7 @@ function esNoticiaReciente(fechaRaw) {
 }
 
 // -------------------------------------------------------------
-// 1. CARGA DE NOTICIAS PROPIAS DEL PORTAL
+// 1. NOTICIAS DEL PORTAL
 // -------------------------------------------------------------
 function cargarNoticiasPortal() {
     fetch(urlAPI)
@@ -120,8 +128,9 @@ function renderizarNoticias(noticias) {
         );
         
         let rawMultimedia = obtenerValorPropiedad(noticia, ['imagen/multimedia', 'imagen', 'Imagen', 'image', 'urlimagen', 'multimedia']);
-        const multimediaInfo = obtenerUrlMultimedia(rawMultimedia);
-        const tituloTexto = obtenerValorPropiedad(noticia, ['titulo', 'Título', 'title']) || 'Sin título';
+        let rawEnlace = obtenerValorPropiedad(noticia, ['enlace', 'Enlace', 'link', 'url']);
+        const multimediaInfo = obtenerUrlMultimedia(rawMultimedia, rawEnlace);
+        const tituloTexto = obtenerValorPropiedad(noticia, ['noticia', 'Noticia', 'titulo', 'Título', 'title']) || 'Sin título';
 
         card.innerHTML = `
             <div style="position: relative; width: 100%; height: 160px; overflow: hidden; background: #222;">
@@ -146,7 +155,7 @@ function renderizarNoticias(noticias) {
 }
 
 // -------------------------------------------------------------
-// 2. CARGA DE NOTICIAS DE MINUTO 1
+// 2. MINUTO 1 (LEER 'Noticia', 'Enlace', 'Imagen')
 // -------------------------------------------------------------
 async function cargarNoticiasMinutoUno() {
     const contenedor = document.getElementById('grid-minutouno');
@@ -164,6 +173,7 @@ async function cargarNoticiasMinutoUno() {
             return esNoticiaReciente(fecha);
         });
 
+        // Tomar las últimas 3 noticias
         const noticiasMostradas = noticiasValidas.slice(0, 3);
 
         if (noticiasMostradas.length === 0) {
@@ -183,18 +193,14 @@ async function cargarNoticiasMinutoUno() {
             card.style.justifyContent = 'space-between';
             card.style.cursor = 'pointer';
 
-            // Extracción robusta de campos
-            let rawMultimedia = obtenerValorPropiedad(noti, ['imagen/multimedia', 'imagen', 'Imagen', 'image', 'urlimagen', 'multimedia', 'img', 'media']);
-            const multimediaInfo = obtenerUrlMultimedia(rawMultimedia);
-            
-            const tituloTexto = obtenerValorPropiedad(noti, ['titulo', 'Título', 'title', 'encabezado']) || 'Noticia Minuto 1';
+            // Extracción según tus columnas: Noticia, Enlace, Imagen
+            const tituloTexto = obtenerValorPropiedad(noti, ['noticia', 'Noticia', 'titulo', 'Título', 'title']) || 'Sin Título';
             const enlaceUrl = obtenerValorPropiedad(noti, ['enlace', 'Enlace', 'link', 'url']) || '#';
+            const rawMultimedia = obtenerValorPropiedad(noti, ['imagen', 'Imagen', 'image', 'urlimagen', 'multimedia']);
             const fechaVal = obtenerValorPropiedad(noti, ['fecha', 'Fecha', 'date']);
             
-            // Extracción de resumen / descripción / cuerpo
-            const cuerpoTexto = obtenerValorPropiedad(noti, ['descripcion', 'cuerpo', 'description', 'resumen', 'copete', 'detalle', 'noticia']);
-            const resumenCorto = cuerpoTexto.length > 110 ? cuerpoTexto.substring(0, 110) + '...' : cuerpoTexto;
-
+            // Procesar imagen previa (si es YouTube extrae la carátula)
+            const multimediaInfo = obtenerUrlMultimedia(rawMultimedia, enlaceUrl);
             let fechaHoraTexto = formatearFechaYHora(fechaVal, obtenerValorPropiedad(noti, ['hora', 'Hora']));
 
             card.innerHTML = `
@@ -209,9 +215,8 @@ async function cargarNoticiasMinutoUno() {
                     </div>
                     <div style="padding: 15px;">
                         <span class="badge" style="background: #e63946; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Minuto 1</span>
-                        <span style="font-size: 0.75rem; color: #777; display: block; margin-top: 6px;">${fechaHoraTexto}</span>
-                        <h3 style="font-size: 1rem; margin: 8px 0 6px 0; color: #1a1a1a; line-height: 1.3;">${tituloTexto}</h3>
-                        ${resumenCorto ? `<p style="font-size: 0.85rem; color: #555; line-height: 1.4; margin: 0;">${resumenCorto}</p>` : ''}
+                        ${fechaHoraTexto ? `<span style="font-size: 0.75rem; color: #777; display: block; margin-top: 6px;">${fechaHoraTexto}</span>` : ''}
+                        <h3 style="font-size: 1rem; margin: 8px 0 0 0; color: #1a1a1a; line-height: 1.4;">${tituloTexto}</h3>
                     </div>
                 </div>
                 <div style="padding: 15px;">
@@ -221,14 +226,14 @@ async function cargarNoticiasMinutoUno() {
                 </div>
             `;
 
-            // Apertura de ventana emergente (Modal) dentro de la web
+            // Al hacer clic abre la ventana emergente interna (Modal)
             card.onclick = () => {
                 abrirModalNoticia({
                     categoria: 'Minuto 1',
                     titulo: tituloTexto,
-                    imagen: rawMultimedia,
+                    imagen: rawMultimedia || multimediaInfo.url,
                     enlace: enlaceUrl,
-                    cuerpo: cuerpoTexto || 'Haz clic en el botón de abajo para ir a la nota original completa.',
+                    cuerpo: tituloTexto,
                     fecha: fechaVal,
                     hora: obtenerValorPropiedad(noti, ['hora', 'Hora'])
                 });
@@ -244,15 +249,17 @@ async function cargarNoticiasMinutoUno() {
 }
 
 // -------------------------------------------------------------
-// 3. VENTANA EMERGENTE (MODAL INTERNO)
+// 3. VENTANA EMERGENTE (MODAL INTERNO) CON BOTÓN DE CIERRE
 // -------------------------------------------------------------
 function abrirModalNoticia(noticia) {
     const modal = document.getElementById('modal-noticia');
     if (!modal) return;
 
-    const tituloNoticia = obtenerValorPropiedad(noticia, ['titulo', 'Título', 'title']) || 'Sin título';
-    const rawMultimedia = obtenerValorPropiedad(noticia, ['imagen/multimedia', 'imagen', 'Imagen', 'image', 'urlimagen', 'multimedia']);
-    const multimediaInfo = obtenerUrlMultimedia(rawMultimedia);
+    const tituloNoticia = obtenerValorPropiedad(noticia, ['noticia', 'Noticia', 'titulo', 'Título', 'title']) || noticia.titulo || 'Noticia';
+    const rawMultimedia = obtenerValorPropiedad(noticia, ['imagen', 'Imagen', 'imagen/multimedia', 'multimedia']) || noticia.imagen;
+    const rawEnlace = obtenerValorPropiedad(noticia, ['enlace', 'Enlace', 'link', 'url']) || noticia.enlace;
+    
+    const multimediaInfo = obtenerUrlMultimedia(rawMultimedia, rawEnlace);
 
     const elemCategoria = document.getElementById('modal-categoria');
     if (elemCategoria) elemCategoria.innerText = noticia.categoria || 'Minuto 1';
@@ -268,13 +275,15 @@ function abrirModalNoticia(noticia) {
 
     const cuerpoModal = document.getElementById('modal-cuerpo');
     if (cuerpoModal) {
-        let textoCuerpo = obtenerValorPropiedad(noticia, ['cuerpo', 'descripcion', 'description', 'resumen', 'copete', 'detalle']) || noticia.cuerpo || '';
-        let enlaceUrl = obtenerValorPropiedad(noticia, ['enlace', 'Enlace', 'link', 'url']) || noticia.enlace || '#';
+        let textoCuerpo = obtenerValorPropiedad(noticia, ['cuerpo', 'descripcion', 'resumen', 'copete', 'detalle']) || noticia.cuerpo || tituloNoticia;
+        let enlaceUrl = rawEnlace || '#';
+
+        let contenidoHtml = `<p style="font-size: 1rem; line-height: 1.5; color: #333;">${textoCuerpo}</p>`;
 
         if (enlaceUrl && enlaceUrl !== '#') {
-            textoCuerpo += `<br><br><a href="${enlaceUrl}" target="_blank" style="display: inline-block; background: #d9534f; color: #fff; padding: 10px 18px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-top: 10px;">Abrir nota original en sitio web ↗</a>`;
+            contenidoHtml += `<br><a href="${enlaceUrl}" target="_blank" style="display: inline-block; background: #d9534f; color: #fff; padding: 10px 18px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-top: 10px;">Abrir enlace original ↗</a>`;
         }
-        cuerpoModal.innerHTML = textoCuerpo;
+        cuerpoModal.innerHTML = contenidoHtml;
     }
 
     const fechaHoraTexto = formatearFechaYHora(
@@ -337,7 +346,7 @@ function formatearFechaYHora(fechaCruda, horaCruda) {
 function filterNews() {
     const query = document.getElementById('searchInput').value.toLowerCase();
     const filtradas = todasLasNoticias.filter(n => {
-        let t = obtenerValorPropiedad(n, ['titulo', 'Título', 'title']).toLowerCase();
+        let t = obtenerValorPropiedad(n, ['noticia', 'Noticia', 'titulo', 'Título', 'title']).toLowerCase();
         let c = obtenerValorPropiedad(n, ['cuerpo', 'descripcion']).toLowerCase();
         return t.includes(query) || c.includes(query);
     });
