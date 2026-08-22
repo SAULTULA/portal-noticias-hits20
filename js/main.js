@@ -4,7 +4,7 @@ const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuK
 // URL del script para Minuto 1
 const urlMinutoUno = "https://script.google.com/macros/s/AKfycbzR7SwIz2RhDD5XS9Cu15qMz7jvimJBIIQ-VBG3kcIOlInJlDxw2T-jpnpkC65kAAng/exec";
 
-// Placeholder en Base64 (100% inmune a errores de sintaxis y comillas)
+// Placeholder Base64 (Inmune a errores de sintaxis, comillas o problemas de protocolo)
 const imgFallback = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMzAwIDE4MCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjY2NjYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmaWxsPSIjNjY2NjY2IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlNpbiBJbWFnZW48L3RleHQ+PC9zdmc+";
 
 let todasLasNoticias = [];
@@ -109,23 +109,27 @@ async function cargarNoticiasMinutoUno() {
             card.style.justifyContent = 'space-between';
             card.style.cursor = 'pointer';
 
-            // Extracción limpia de campos
+            // Extracción de imagen evitando errores de tipo object
             let rawImg = noti.imagen || noti.image || noti.urlImagen;
             const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
             
             const tituloTexto = typeof noti.titulo === 'string' ? noti.titulo : (noti.title || 'Sin título');
             const enlaceUrl = typeof noti.enlace === 'string' ? noti.enlace : (noti.link || noti.url || '#');
-            const cuerpoTexto = noti.cuerpo || noti.descripcion || noti.description || noti.resumen || '';
+            
+            // Mapeo flexible de la descripción proveniente de Google Sheets
+            const cuerpoTexto = noti.cuerpo || noti.descripcion || noti.description || noti.resumen || noti.copete || '';
+            const descripcionCorta = cuerpoTexto.length > 120 ? cuerpoTexto.substring(0, 120) + '...' : cuerpoTexto;
 
             card.innerHTML = `
                 <div>
                     <img src="${imagenUrl}" alt="${tituloTexto}" style="width: 100%; height: 180px; object-fit: cover;" onerror="this.src='${imgFallback}'">
                     <div style="padding: 15px;">
                         <span class="badge" style="background: #e63946; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Minuto 1</span>
-                        <h3 style="font-size: 1rem; margin: 10px 0; color: #1a1a1a; line-height: 1.4;">${tituloTexto}</h3>
+                        <h3 style="font-size: 1rem; margin: 10px 0 8px 0; color: #1a1a1a; line-height: 1.3;">${tituloTexto}</h3>
+                        ${descripcionCorta ? `<p style="font-size: 0.85rem; color: #555; line-height: 1.4; margin: 0;">${descripcionCorta}</p>` : ''}
                     </div>
                 </div>
-                <div style="padding: 0 15px 15px 15px;">
+                <div style="padding: 15px;">
                     <button type="button" class="btn-leer-mas" style="width: 100%; border: none; background: #d9534f; color: #fff; padding: 8px 12px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer;">
                         Leer noticia →
                     </button>
@@ -137,7 +141,7 @@ async function cargarNoticiasMinutoUno() {
                     categoria: 'Minuto 1',
                     titulo: tituloTexto,
                     imagen: imagenUrl,
-                    cuerpo: cuerpoTexto || 'Haz clic en el botón de abajo para ver la nota original.',
+                    cuerpo: cuerpoTexto || 'Haz clic en el botón de abajo para ir a la nota original.',
                     fecha: noti.fecha || noti.Fecha,
                     hora: noti.hora || noti.Hora
                 });
@@ -227,7 +231,7 @@ function cerrarNoticia() {
 function abrirPlayer() {
     const modal = document.getElementById('radio-modal-flotante');
     const audio = document.getElementById('audio-stream');
-    modal.style.display = 'block';
+    if (modal) modal.style.display = 'block';
     if (audio) {
         audio.play().catch(e => console.log("Autoplay bloqueado:", e));
     }
@@ -236,7 +240,7 @@ function abrirPlayer() {
 function cerrarPlayer() {
     const modal = document.getElementById('radio-modal-flotante');
     const audio = document.getElementById('audio-stream');
-    modal.style.display = 'none';
+    if (modal) modal.style.display = 'none';
     if (audio) {
         audio.pause();
     }
