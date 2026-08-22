@@ -131,7 +131,7 @@
         <!-- ÁREA CENTRAL DE NOTICIAS -->
         <main id="noticias-container">
             
-            <!-- WIDGET DE CLIMA EN VIVO CON BOTÓN OTRAS LOC -->
+            <!-- WIDGET DE CLIMA EN VIVO -->
             <div class="weather-ticker-container">
                 <div class="weather-ticker-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>🌡️ Estado del Clima en la Provincia de San Luis</span>
@@ -142,20 +142,32 @@
                 </div>
             </div>
 
+            <!-- 1. NOTICIAS PROVINCIALES -->
+            <section class="categoria-section">
+                <h2>Noticias Provinciales</h2>
+                <div class="grid" id="grid-provinciales"></div>
+            </section>
+
+            <!-- 2. NOTICIAS NACIONALES -->
             <section class="categoria-section">
                 <h2>Noticias Nacionales</h2>
                 <div class="grid" id="grid-nacionales"></div>
             </section>
 
+            <!-- 3. NOTICIAS INTERNACIONALES -->
             <section class="categoria-section">
                 <h2>Noticias Internacionales</h2>
                 <div class="grid" id="grid-internacionales"></div>
             </section>
 
+            <!-- 4. NOTICIAS MINUTO 1 -->
             <section class="categoria-section">
-                <h2>Noticias Provinciales</h2>
-                <div class="grid" id="grid-provinciales"></div>
+                <h2>Noticias Minuto 1</h2>
+                <div class="grid" id="grid-minutouno">
+                    <p style="color: #666; font-size: 0.9rem;">Cargando últimas noticias de Minuto 1...</p>
+                </div>
             </section>
+
         </main>
 
         <!-- LATERAL DERECHO -->
@@ -164,7 +176,7 @@
                 <input type="text" id="searchInput" placeholder="Buscar noticias..." onkeyup="filterNews()">
             </div>
 
-            <!-- 1. Reproductor de Radio -->
+            <!-- Reproductor de Radio -->
             <div class="radio-widget">
                 <img src="logo.png" alt="Logo Radio" class="radio-logo" onerror="this.src='https://via.placeholder.com/100?text=RADIO'">
                 <button class="btn-live" onclick="abrirPlayer()">
@@ -172,12 +184,12 @@
                 </button>
             </div>
 
-            <!-- Contador de Visitas Ajustado al 100% -->
+            <!-- Contador de Visitas -->
             <div class="contador-widget" style="margin-top: 15px; text-align: center;">
                 <iframe src="https://contador-red-delta.vercel.app/widget.html?id=PORTAL%20DE%20NOTICIAS%20HITS20&t=1787066414602" width="300" height="246" frameborder="0" scrolling="no" style="border:none; overflow:hidden;"></iframe>
             </div>
         
-            <!-- FORMULARIO DE CONTACTO (FORMSPREE) -->
+            <!-- Formulario de Contacto -->
             <div class="contact-widget">
                 <h3>Contacto</h3>
                 <form action="https://formspree.io/f/mdenpzbp" method="POST">
@@ -188,25 +200,25 @@
                 </form>
             </div>
 
-            <!-- 2. Espacios para Pauta -->
+            <!-- Espacios para Pauta -->
             <div class="ads">
                 <div class="ad-slot"><p>Espacio Publicitario / Flyer 1</p></div>
                 <div class="ad-slot"><p>Espacio Publicitario / Flyer 2</p></div>
             </div>
 
-            <!-- 3. Inicio de Sesión -->
+            <!-- Inicio de Sesión -->
             <div style="margin-top: 25px;">
                 <a href="login.html">Inicio de sesión</a>
             </div>
 
-            <!-- 4. Instalar App (PWA) -->
+            <!-- Instalar App (PWA) -->
             <div style="margin-top: 10px;">
                 <button id="btn-instalar">⬇️ Instalar App</button>
             </div>
         </aside>
     </div>
 
-    <!-- FOOTER CON COPYRIGHT Y LOGOS EN ASOCIACIÓN -->
+    <!-- FOOTER -->
     <footer style="background: #1a1a1a; color: #fff; padding: 25px 20px; text-align: center; margin-top: 40px; border-top: 3px solid #d9534f;">
         <div style="margin-bottom: 15px;">
             <p style="margin: 0 0 10px 0; font-size: 0.9rem; letter-spacing: 0.5px;">En asociación con:</p>
@@ -245,7 +257,6 @@
                 <source src="https://stream.radiosmundiales.com/stream/claudio" type="audio/mpeg">
                 Tu navegador no soporta el elemento de audio.
             </audio>
-            <!-- Control deslizante de volumen -->
             <div style="margin-top: 10px; text-align: center;">
               <label for="volumeSlider" style="font-size: 0.8rem; color: #555; display: block; margin-bottom: 4px;">Volumen: <span id="volumeValue">40</span>%</label>
               <input type="range" id="volumeSlider" min="0" max="100" value="40" style="width: 100%; cursor: pointer;" oninput="cambiarVolumen(this.value)">
@@ -268,17 +279,10 @@
         </div>
     </div>
 
-    <!-- SCRIPT PARA CARGAR EL CLIMA PRINCIPAL Y ARRASTRE -->
+    <!-- SCRIPT DE CLIMA Y ARRASTRE -->
     <script>
         const apiKey = 'e275965fe86eeeabba320d7b99bb4faf';
-        const cities = [
-            "San Luis", 
-            "Villa Mercedes", 
-            "Merlo", 
-            "La Punta", 
-            "Juana Koslay", 
-            "El Trapiche"
-        ];
+        const cities = ["San Luis", "Villa Mercedes", "Merlo", "La Punta", "Juana Koslay", "El Trapiche"];
 
         async function loadWeather() {
             const tickerContainer = document.getElementById('weather-ticker');
@@ -291,7 +295,6 @@
                     const data = await response.json();
                     
                     const temp = Math.round(data.main.temp);
-                    
                     let icon = '🌡️';
                     const id = data.weather[0].id;
                     if (id >= 200 && id < 300) icon = '⛈️';
@@ -313,7 +316,6 @@
 
         document.addEventListener('DOMContentLoaded', loadWeather);
 
-        // LÓGICA DE ARRASTRE PARA EL REPRODUCTOR FLOTANTE
         const modalFlotante = document.getElementById('radio-modal-flotante');
         const headerDrag = document.getElementById('radio-header-drag');
         let isDragging = false, offsetX, offsetY;
@@ -338,7 +340,7 @@
         });
     </script>
 
-    <!-- REGISTRO DEL SERVICE WORKER Y BOTÓN DE INSTALAR APP (PWA) -->
+    <!-- PWA & SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -361,7 +363,6 @@
             btnInstalar.disabled = true;
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log('Resultado de instalación:', outcome);
             deferredPrompt = null;
             btnInstalar.classList.remove('visible');
         });
