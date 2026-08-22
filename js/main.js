@@ -4,8 +4,8 @@ const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuK
 // URL del script para Minuto 1
 const urlMinutoUno = "https://script.google.com/macros/s/AKfycbzR7SwIz2RhDD5XS9Cu15qMz7jvimJBIIQ-VBG3kcIOlInJlDxw2T-jpnpkC65kAAng/exec";
 
-// Placeholder SVG local (no requiere conexión de red)
-const imgFallback = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='180' viewBox='0 0 300 180'><rect width='100%' height='100%' fill='%23cccccc'/><text x='50%' y='50%' fill='%23666666' font-family='sans-serif' font-size='16' text-anchor='middle' dy='.3em'>Sin Imagen</text></svg>";
+// Placeholder en Base64 (100% inmune a errores de sintaxis y comillas)
+const imgFallback = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMzAwIDE4MCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjY2NjYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmaWxsPSIjNjY2NjY2IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlNpbiBJbWFnZW48L3RleHQ+PC9zdmc+";
 
 let todasLasNoticias = [];
 
@@ -58,7 +58,9 @@ function renderizarNoticias(noticias) {
         card.onclick = () => abrirModalNoticia(noticia);
 
         let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
-        const imagenUrl = noticia.imagen || imgFallback;
+        
+        let rawImg = noticia.imagen || noticia.Imagen;
+        const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
 
         card.innerHTML = `
             <img src="${imagenUrl}" alt="${noticia.titulo || ''}" onerror="this.src='${imgFallback}'">
@@ -107,9 +109,12 @@ async function cargarNoticiasMinutoUno() {
             card.style.justifyContent = 'space-between';
             card.style.cursor = 'pointer';
 
-            const imagenUrl = noti.imagen || noti.image || noti.urlImagen || imgFallback;
-            const tituloTexto = noti.titulo || noti.title || 'Sin título';
-            const enlaceUrl = noti.enlace || noti.link || noti.url || '#';
+            // Extracción limpia de campos
+            let rawImg = noti.imagen || noti.image || noti.urlImagen;
+            const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
+            
+            const tituloTexto = typeof noti.titulo === 'string' ? noti.titulo : (noti.title || 'Sin título');
+            const enlaceUrl = typeof noti.enlace === 'string' ? noti.enlace : (noti.link || noti.url || '#');
             const cuerpoTexto = noti.cuerpo || noti.descripcion || noti.description || noti.resumen || '';
 
             card.innerHTML = `
@@ -131,8 +136,8 @@ async function cargarNoticiasMinutoUno() {
                 abrirModalNoticia({
                     categoria: 'Minuto 1',
                     titulo: tituloTexto,
-                    imagen: imagenUrl !== imgFallback ? imagenUrl : '',
-                    cuerpo: cuerpoTexto || 'Haz clic abajo para ver la nota original completa.',
+                    imagen: imagenUrl,
+                    cuerpo: cuerpoTexto || 'Haz clic en el botón de abajo para ver la nota original.',
                     fecha: noti.fecha || noti.Fecha,
                     hora: noti.hora || noti.Hora
                 });
@@ -201,7 +206,9 @@ function filterNews() {
 function abrirModalNoticia(noticia) {
     document.getElementById('modal-categoria').innerText = noticia.categoria || '';
     document.getElementById('modal-titulo').innerText = noticia.titulo || '';
-    document.getElementById('modal-imagen').src = noticia.imagen || imgFallback;
+    
+    let rawImg = noticia.imagen;
+    document.getElementById('modal-imagen').src = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
     document.getElementById('modal-cuerpo').innerText = noticia.cuerpo || '';
 
     let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
