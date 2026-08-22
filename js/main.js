@@ -20,18 +20,41 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // -------------------------------------------------------------
+// DETECCIÓN Y EXTRACCIÓN DE MINIATURAS DE YOUTUBE / MULTIMEDIA
+// -------------------------------------------------------------
+function obtenerUrlMultimedia(rawMultimedia) {
+    if (!rawMultimedia || typeof rawMultimedia !== 'string') return { url: imgFallback, esVideo: false };
+
+    let urlTrim = rawMultimedia.trim();
+
+    // Patrones para identificar URLs de YouTube (Standard, Shorts o YouTu.be)
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = urlTrim.match(regExp);
+
+    if (match && match[2].length === 11) {
+        const videoId = match[2];
+        // Retorna la miniatura oficial de alta calidad de YouTube y marca que es un video
+        return {
+            url: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            esVideo: true
+        };
+    }
+
+    // Si es una imagen normal u otra URL válida
+    return { url: urlTrim, esVideo: false };
+}
+
+// -------------------------------------------------------------
 // FILTRO DE NOTICIAS DE MÁS DE 2 DÍAS (48 HORAS)
 // -------------------------------------------------------------
 function esNoticiaReciente(fechaRaw) {
-    if (!fechaRaw) return true; // Si no tiene fecha, no se oculta
+    if (!fechaRaw) return true;
     try {
         const fechaNoticia = new Date(fechaRaw);
         if (isNaN(fechaNoticia.getTime())) return true;
         
         const ahora = new Date();
         const diferenciaHoras = (ahora - fechaNoticia) / (1000 * 60 * 60);
-        
-        // Conserva únicamente si tiene 48 horas o menos
         return diferenciaHoras <= 48;
     } catch (e) {
         return true;
@@ -47,7 +70,6 @@ function cargarNoticiasPortal() {
         .then(data => {
             if (!Array.isArray(data)) return;
             
-            // Ocultar las de más de 2 días
             todasLasNoticias = data.filter(n => esNoticiaReciente(n.fecha || n.Fecha || n["Fecha"]));
             renderizarNoticias(todasLasNoticias);
 
@@ -80,12 +102,21 @@ function renderizarNoticias(noticias) {
 
         let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha || noticia["Fecha"], noticia.hora || noticia.Hora);
         
-        let rawImg = noticia["Imagen/Multimedia"] || noticia.imagen || noticia.Imagen;
-        const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
-        const tituloTexto = noticia["Título"] || noticia.titulo || noticia.Fecha || 'Sin título';
+        let rawMultimedia = noticia["Imagen/Multimedia"] || noticia.imagen || noticia.Imagen;
+        const multimediaInfo = obtenerUrlMultimedia(rawMultimedia);
+        const tituloTexto = noticia["Título"] || noticia.titulo || 'Sin título';
 
+        // HTML interno con indicador visual si es video
         card.innerHTML = `
-            <img src="${imagenUrl}" alt="${tituloTexto}" onerror="this.src='${imgFallback}'">
+            <div style="position: relative; width: 100%; height: 160px; overflow: hidden; background: #000;">
+                <img src="${multimediaInfo.url}" alt="${tituloTexto}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${imgFallback}'">
+                ${multimediaInfo.esVideo ? `
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
+                        <div style="width: 0; height: 0; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 15px solid #fff; margin-left: 3px;"></div>
+                    </div>
+                    <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: bold;">VIDEO</span>
+                ` : ''}
+            </div>
             <div class="card-content">
                 <span class="badge">${noticia.categoria || 'General'}</span>
                 <span style="font-size: 0.7rem; color: #777; display: block; margin-top: 4px;">${fechaHoraTexto}</span>
@@ -113,11 +144,8 @@ async function cargarNoticiasMinutoUno() {
         contenedor.innerHTML = '';
 
         let noticiasValidas = Array.isArray(noticias) ? noticias : [];
-
-        // 1. Filtrar noticias para conservar únicamente las de menos de 48 horas (2 días)
         noticiasValidas = noticiasValidas.filter(noti => esNoticiaReciente(noti["Fecha"] || noti.fecha || noti.Fecha));
 
-        // 2. Tomar las últimas 3
         const noticiasMostradas = noticiasValidas.slice(0, 3);
 
         if (noticiasMostradas.length === 0) {
@@ -137,9 +165,8 @@ async function cargarNoticiasMinutoUno() {
             card.style.justifyContent = 'space-between';
             card.style.cursor = 'pointer';
 
-            // Mapeo adaptado exactamente a tus columnas de Google Sheet
-            let rawImg = noti["Imagen/Multimedia"] || noti.imagen || noti.image || noti.urlImagen;
-            const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
+            let rawMultimedia = noti["Imagen/Multimedia"] || noti.imagen || noti.image || noti.urlImagen;
+            const multimediaInfo = obtenerUrlMultimedia(rawMultimedia);
             
             const tituloTexto = noti["Título"] || noti.titulo || noti.title || 'Sin título';
             const enlaceUrl = noti["Enlace"] || noti.enlace || noti.link || noti.url || '#';
@@ -149,7 +176,15 @@ async function cargarNoticiasMinutoUno() {
 
             card.innerHTML = `
                 <div>
-                    <img src="${imagenUrl}" alt="${tituloTexto}" style="width: 100%; height: 180px; object-fit: cover;" onerror="this.src='${imgFallback}'">
+                    <div style="position: relative; width: 100%; height: 180px; overflow: hidden; background: #000;">
+                        <img src="${multimediaInfo.url}" alt="${tituloTexto}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${imgFallback}'">
+                        ${multimediaInfo.esVideo ? `
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
+                                <div style="width: 0; height: 0; border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 15px solid #fff; margin-left: 3px;"></div>
+                            </div>
+                            <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: bold;">VIDEO</span>
+                        ` : ''}
+                    </div>
                     <div style="padding: 15px;">
                         <span class="badge" style="background: #e63946; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Minuto 1</span>
                         <span style="font-size: 0.75rem; color: #777; display: block; margin-top: 6px;">${fechaHoraTexto}</span>
@@ -158,7 +193,7 @@ async function cargarNoticiasMinutoUno() {
                 </div>
                 <div style="padding: 15px;">
                     <button type="button" class="btn-leer-mas" style="width: 100%; border: none; background: #d9534f; color: #fff; padding: 8px 12px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; cursor: pointer;">
-                        Leer noticia →
+                        Ver nota / video →
                     </button>
                 </div>
             `;
@@ -167,8 +202,8 @@ async function cargarNoticiasMinutoUno() {
                 abrirModalNoticia({
                     categoria: 'Minuto 1',
                     titulo: tituloTexto,
-                    imagen: imagenUrl,
-                    cuerpo: 'Haz clic en el botón de abajo para ir a la nota original completa.',
+                    imagen: multimediaInfo.url,
+                    cuerpo: 'Haz clic en el botón de abajo para ver la nota o video completo.',
                     fecha: fechaVal,
                     hora: noti.hora || noti.Hora
                 });
@@ -224,18 +259,19 @@ function formatearFechaYHora(fechaCruda, horaCruda) {
 function filterNews() {
     const query = document.getElementById('searchInput').value.toLowerCase();
     const filtradas = todasLasNoticias.filter(n => 
-        ((n.titulo || n["Título"]) && (n.titulo || n["Título"]).toLowerCase().includes(query)) ||
-        ((n.cuerpo || n.cuerpo) && n.cuerpo.toLowerCase().includes(query))
+        ((n.titulo || n["Título"]) && (n.titulo || n["Título"]).toLowerCase().includes(query))
     );
     renderizarNoticias(filtradas);
 }
 
 function abrirModalNoticia(noticia) {
-    document.getElementById('modal-categoria').innerText = noticia.categoria || 'Minuto 1';
+    document.getElementById('modal-categoria').innerText = noticia.categoria || 'Portal';
     document.getElementById('modal-titulo').innerText = noticia.titulo || noticia["Título"] || '';
     
-    let rawImg = noticia.imagen || noticia["Imagen/Multimedia"];
-    document.getElementById('modal-imagen').src = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
+    let rawMultimedia = noticia.imagen || noticia["Imagen/Multimedia"];
+    let multimediaInfo = obtenerUrlMultimedia(rawMultimedia);
+    
+    document.getElementById('modal-imagen').src = multimediaInfo.url;
     document.getElementById('modal-cuerpo').innerText = noticia.cuerpo || 'Haz clic en el enlace para abrir la nota original.';
 
     let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha || noticia["Fecha"], noticia.hora || noticia.Hora);
