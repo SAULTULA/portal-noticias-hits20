@@ -4,7 +4,7 @@ const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuK
 // URL del script para Minuto 1
 const urlMinutoUno = "https://script.google.com/macros/s/AKfycbzR7SwIz2RhDD5XS9Cu15qMz7jvimJBIIQ-VBG3kcIOlInJlDxw2T-jpnpkC65kAAng/exec";
 
-// Placeholder Base64 (Inmune a errores de sintaxis, comillas o problemas de protocolo)
+// Placeholder Base64 para imágenes caídas o vacías
 const imgFallback = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMzAwIDE4MCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjY2NjYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmaWxsPSIjNjY2NjY2IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlNpbiBJbWFnZW48L3RleHQ+PC9zdmc+";
 
 let todasLasNoticias = [];
@@ -20,6 +20,25 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // -------------------------------------------------------------
+// FILTRO DE NOTICIAS DE MÁS DE 2 DÍAS (48 HORAS)
+// -------------------------------------------------------------
+function esNoticiaReciente(fechaRaw) {
+    if (!fechaRaw) return true; // Si no tiene fecha, no se oculta
+    try {
+        const fechaNoticia = new Date(fechaRaw);
+        if (isNaN(fechaNoticia.getTime())) return true;
+        
+        const ahora = new Date();
+        const diferenciaHoras = (ahora - fechaNoticia) / (1000 * 60 * 60);
+        
+        // Conserva únicamente si tiene 48 horas o menos
+        return diferenciaHoras <= 48;
+    } catch (e) {
+        return true;
+    }
+}
+
+// -------------------------------------------------------------
 // 1. CARGA DE NOTICIAS PROPIAS DEL PORTAL
 // -------------------------------------------------------------
 function cargarNoticiasPortal() {
@@ -27,7 +46,9 @@ function cargarNoticiasPortal() {
         .then(res => res.json())
         .then(data => {
             if (!Array.isArray(data)) return;
-            todasLasNoticias = data;
+            
+            // Ocultar las de más de 2 días
+            todasLasNoticias = data.filter(n => esNoticiaReciente(n.fecha || n.Fecha || n["Fecha"]));
             renderizarNoticias(todasLasNoticias);
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -57,17 +78,18 @@ function renderizarNoticias(noticias) {
         card.className = 'card-noticia';
         card.onclick = () => abrirModalNoticia(noticia);
 
-        let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
+        let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha || noticia["Fecha"], noticia.hora || noticia.Hora);
         
-        let rawImg = noticia.imagen || noticia.Imagen;
+        let rawImg = noticia["Imagen/Multimedia"] || noticia.imagen || noticia.Imagen;
         const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
+        const tituloTexto = noticia["Título"] || noticia.titulo || noticia.Fecha || 'Sin título';
 
         card.innerHTML = `
-            <img src="${imagenUrl}" alt="${noticia.titulo || ''}" onerror="this.src='${imgFallback}'">
+            <img src="${imagenUrl}" alt="${tituloTexto}" onerror="this.src='${imgFallback}'">
             <div class="card-content">
                 <span class="badge">${noticia.categoria || 'General'}</span>
                 <span style="font-size: 0.7rem; color: #777; display: block; margin-top: 4px;">${fechaHoraTexto}</span>
-                <h3>${noticia.titulo || 'Sin título'}</h3>
+                <h3>${tituloTexto}</h3>
             </div>
         `;
 
@@ -90,10 +112,16 @@ async function cargarNoticiasMinutoUno() {
 
         contenedor.innerHTML = '';
 
-        const noticiasMostradas = Array.isArray(noticias) ? noticias.slice(0, 3) : [];
+        let noticiasValidas = Array.isArray(noticias) ? noticias : [];
+
+        // 1. Filtrar noticias para conservar únicamente las de menos de 48 horas (2 días)
+        noticiasValidas = noticiasValidas.filter(noti => esNoticiaReciente(noti["Fecha"] || noti.fecha || noti.Fecha));
+
+        // 2. Tomar las últimas 3
+        const noticiasMostradas = noticiasValidas.slice(0, 3);
 
         if (noticiasMostradas.length === 0) {
-            contenedor.innerHTML = '<p style="color: #666;">No hay noticias de Minuto 1 disponibles en este momento.</p>';
+            contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No hay noticias recientes de Minuto 1 en las últimas 48 horas.</p>';
             return;
         }
 
@@ -109,24 +137,23 @@ async function cargarNoticiasMinutoUno() {
             card.style.justifyContent = 'space-between';
             card.style.cursor = 'pointer';
 
-            // Extracción de imagen evitando errores de tipo object
-            let rawImg = noti.imagen || noti.image || noti.urlImagen;
+            // Mapeo adaptado exactamente a tus columnas de Google Sheet
+            let rawImg = noti["Imagen/Multimedia"] || noti.imagen || noti.image || noti.urlImagen;
             const imagenUrl = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
             
-            const tituloTexto = typeof noti.titulo === 'string' ? noti.titulo : (noti.title || 'Sin título');
-            const enlaceUrl = typeof noti.enlace === 'string' ? noti.enlace : (noti.link || noti.url || '#');
+            const tituloTexto = noti["Título"] || noti.titulo || noti.title || 'Sin título';
+            const enlaceUrl = noti["Enlace"] || noti.enlace || noti.link || noti.url || '#';
+            const fechaVal = noti["Fecha"] || noti.fecha || noti.Fecha;
             
-            // Mapeo flexible de la descripción proveniente de Google Sheets
-            const cuerpoTexto = noti.cuerpo || noti.descripcion || noti.description || noti.resumen || noti.copete || '';
-            const descripcionCorta = cuerpoTexto.length > 120 ? cuerpoTexto.substring(0, 120) + '...' : cuerpoTexto;
+            let fechaHoraTexto = formatearFechaYHora(fechaVal, noti.hora || noti.Hora);
 
             card.innerHTML = `
                 <div>
                     <img src="${imagenUrl}" alt="${tituloTexto}" style="width: 100%; height: 180px; object-fit: cover;" onerror="this.src='${imgFallback}'">
                     <div style="padding: 15px;">
                         <span class="badge" style="background: #e63946; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Minuto 1</span>
-                        <h3 style="font-size: 1rem; margin: 10px 0 8px 0; color: #1a1a1a; line-height: 1.3;">${tituloTexto}</h3>
-                        ${descripcionCorta ? `<p style="font-size: 0.85rem; color: #555; line-height: 1.4; margin: 0;">${descripcionCorta}</p>` : ''}
+                        <span style="font-size: 0.75rem; color: #777; display: block; margin-top: 6px;">${fechaHoraTexto}</span>
+                        <h3 style="font-size: 1rem; margin: 8px 0 0 0; color: #1a1a1a; line-height: 1.4;">${tituloTexto}</h3>
                     </div>
                 </div>
                 <div style="padding: 15px;">
@@ -141,8 +168,8 @@ async function cargarNoticiasMinutoUno() {
                     categoria: 'Minuto 1',
                     titulo: tituloTexto,
                     imagen: imagenUrl,
-                    cuerpo: cuerpoTexto || 'Haz clic en el botón de abajo para ir a la nota original.',
-                    fecha: noti.fecha || noti.Fecha,
+                    cuerpo: 'Haz clic en el botón de abajo para ir a la nota original completa.',
+                    fecha: fechaVal,
                     hora: noti.hora || noti.Hora
                 });
             };
@@ -170,52 +197,48 @@ async function cargarNoticiasMinutoUno() {
 function formatearFechaYHora(fechaCruda, horaCruda) {
   if (!fechaCruda) return '';
 
-  let fechaStr = String(fechaCruda).trim();
-  let fechaLimpia = '';
-  let horaFinal = '';
-
-  if (fechaStr.includes('T')) {
-    fechaLimpia = fechaStr.split('T')[0];
-  } else {
-    fechaLimpia = fechaStr.substring(0, 10);
-  }
-
-  let fuenteHora = horaCruda;
-  if ((!fuenteHora || String(fuenteHora).trim() === '' || String(fuenteHora).trim() === 'null') && fechaStr.includes('T')) {
-    fuenteHora = fechaStr.split('T')[1];
-  }
-
-  if (fuenteHora !== undefined && fuenteHora !== null && String(fuenteHora).trim() !== '' && String(fuenteHora).trim() !== 'null') {
-    let hStr = String(fuenteHora).trim().replace('Z', '');
-    let match = hStr.match(/\d{2}:\d{2}/);
-    if (match) {
-      horaFinal = match[0];
-    } else if (hStr.toLowerCase().includes('m')) {
-      horaFinal = hStr;
+  let objFecha = new Date(fechaCruda);
+  if (!isNaN(objFecha.getTime())) {
+    let dia = String(objFecha.getDate()).padStart(2, '0');
+    let mes = String(objFecha.getMonth() + 1).padStart(2, '0');
+    let anio = objFecha.getFullYear();
+    let horas = String(objFecha.getHours()).padStart(2, '0');
+    let minutos = String(objFecha.getMinutes()).padStart(2, '0');
+    
+    if (horas !== '00' || minutos !== '00') {
+      return `${dia}/${mes}/${anio} - ${horas}:${minutos}`;
     }
+    return `${dia}/${mes}/${anio}`;
   }
 
-  return horaFinal ? `${fechaLimpia} - ${horaFinal}` : fechaLimpia;
+  let fechaStr = String(fechaCruda).trim();
+  if (fechaStr.includes('T')) {
+    fechaStr = fechaStr.split('T')[0];
+  } else if (fechaStr.length > 10) {
+    fechaStr = fechaStr.substring(0, 10);
+  }
+
+  return fechaStr;
 }
 
 function filterNews() {
     const query = document.getElementById('searchInput').value.toLowerCase();
     const filtradas = todasLasNoticias.filter(n => 
-        (n.titulo && n.titulo.toLowerCase().includes(query)) ||
-        (n.cuerpo && n.cuerpo.toLowerCase().includes(query))
+        ((n.titulo || n["Título"]) && (n.titulo || n["Título"]).toLowerCase().includes(query)) ||
+        ((n.cuerpo || n.cuerpo) && n.cuerpo.toLowerCase().includes(query))
     );
     renderizarNoticias(filtradas);
 }
 
 function abrirModalNoticia(noticia) {
-    document.getElementById('modal-categoria').innerText = noticia.categoria || '';
-    document.getElementById('modal-titulo').innerText = noticia.titulo || '';
+    document.getElementById('modal-categoria').innerText = noticia.categoria || 'Minuto 1';
+    document.getElementById('modal-titulo').innerText = noticia.titulo || noticia["Título"] || '';
     
-    let rawImg = noticia.imagen;
+    let rawImg = noticia.imagen || noticia["Imagen/Multimedia"];
     document.getElementById('modal-imagen').src = (typeof rawImg === 'string' && rawImg.trim() !== '') ? rawImg : imgFallback;
-    document.getElementById('modal-cuerpo').innerText = noticia.cuerpo || '';
+    document.getElementById('modal-cuerpo').innerText = noticia.cuerpo || 'Haz clic en el enlace para abrir la nota original.';
 
-    let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
+    let fechaHoraTexto = formatearFechaYHora(noticia.fecha || noticia.Fecha || noticia["Fecha"], noticia.hora || noticia.Hora);
     document.getElementById('modal-fecha').innerText = fechaHoraTexto;
 
     document.getElementById('modal-noticia').style.display = 'block';
