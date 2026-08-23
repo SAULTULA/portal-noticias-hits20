@@ -127,7 +127,7 @@ function obtenerHtmlMultimedia(urlVideo, urlImagen) {
 }
 
 // -------------------------------------------------------------
-// 2. MODAL DE NOTICIAS
+// 2. MODAL DE NOTICIAS GENERAL
 // -------------------------------------------------------------
 function abrirNoticiaModal(noticia) {
     const elCategoria = document.getElementById('modal-categoria');
@@ -135,6 +135,10 @@ function abrirNoticiaModal(noticia) {
     const elCuerpo = document.getElementById('modal-cuerpo');
     const elFecha = document.getElementById('modal-fecha');
     const modalImagenElem = document.getElementById('modal-imagen');
+
+    // Ocultar botón de enlace externo en noticias normales
+    const btnExterno = document.getElementById('btn-modal-externo');
+    if (btnExterno) btnExterno.style.display = 'none';
 
     if (elCategoria) elCategoria.innerText = noticia.categoria || '';
     if (elTitulo) elTitulo.innerText = noticia.titulo || '';
@@ -260,24 +264,87 @@ async function cargarNoticiasMinutoUno() {
         noticiasFiltradas.forEach(noticia => {
             const card = document.createElement('article');
             card.className = 'card-noticia';
+            card.style.cursor = 'pointer';
+
+            const titulo = noticia.titulo || noticia.Noticia || 'Sin título';
+            const imagen = noticia.imagen || noticia.Imagen || imgFallback;
+            const enlace = noticia.enlace || noticia.Enlace || '#';
+            const categoria = noticia.seccion || noticia.categoria || 'Minuto 1';
+            const cuerpoText = noticia.cuerpo || noticia.descripcion || noticia.Descripcion || '';
+
             card.innerHTML = `
                 <div class="card-image-box">
-                    <img src="${noticia.imagen || noticia.Imagen || imgFallback}" alt="${noticia.titulo || noticia.Noticia || 'Noticia'}" onerror="this.src='${imgFallback}'">
+                    <img src="${imagen}" alt="${titulo}" onerror="this.src='${imgFallback}'">
                 </div>
                 <div class="card-body">
-                    <span class="badge" style="background: #d9534f; color: #fff;">${noticia.seccion || noticia.categoria || 'Minuto 1'}</span>
-                    <h3 style="font-weight: 600; font-size: 0.9rem; margin-top: 6px;">${noticia.titulo || noticia.Noticia || 'Sin título'}</h3>
-                    <a href="${noticia.enlace || noticia.Enlace || '#'}" target="_blank" rel="noopener noreferrer" class="btn-read-more" style="display: inline-block; margin-top: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold; color: #d9534f;">
+                    <span class="badge" style="background: #d9534f; color: #fff;">${categoria}</span>
+                    <h3 style="font-weight: 600; font-size: 0.9rem; margin-top: 6px;">${titulo}</h3>
+                    <a href="${enlace}" target="_blank" rel="noopener noreferrer" class="btn-read-more" onclick="event.stopPropagation();" style="display: inline-block; margin-top: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold; color: #d9534f;">
                         Leer más ↗
                     </a>
                 </div>
             `;
+
+            // Al hacer clic en cualquier parte de la tarjeta o foto, abre la ventana emergente
+            card.addEventListener('click', () => {
+                abrirMinutoUnoModal({
+                    categoria: categoria,
+                    titulo: titulo,
+                    imagen: imagen,
+                    cuerpo: cuerpoText,
+                    enlace: enlace
+                });
+            });
+
             contenedor.appendChild(card);
         });
     } catch (err) {
         console.error("Error al cargar Noticias Minuto 1:", err);
         contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No se pudieron obtener las noticias de Minuto 1.</p>';
     }
+}
+
+// Función para mostrar la noticia de Minuto 1 dentro del Modal Emergente
+function abrirMinutoUnoModal(noticia) {
+    const elCategoria = document.getElementById('modal-categoria');
+    const elTitulo = document.getElementById('modal-titulo');
+    const elCuerpo = document.getElementById('modal-cuerpo');
+    const elFecha = document.getElementById('modal-fecha');
+    const modalImagenElem = document.getElementById('modal-imagen');
+
+    if (elCategoria) elCategoria.innerText = noticia.categoria;
+    if (elTitulo) elTitulo.innerText = noticia.titulo;
+    if (elFecha) elFecha.innerText = '';
+    
+    // Si existe el reproductor de video de otras notas, lo limpia
+    let videoContainerModal = document.getElementById('modal-video-container');
+    if (videoContainerModal) videoContainerModal.innerHTML = '';
+
+    if (elCuerpo) {
+        elCuerpo.innerText = noticia.cuerpo ? `${noticia.cuerpo}\n\n` : '';
+        
+        // Creamos o actualizamos el botón para ir al portal original
+        let btnExterno = document.getElementById('btn-modal-externo');
+        if (!btnExterno) {
+            btnExterno = document.createElement('a');
+            btnExterno.id = 'btn-modal-externo';
+            btnExterno.target = '_blank';
+            btnExterno.rel = 'noopener noreferrer';
+            btnExterno.style.cssText = 'display: inline-block; margin-top: 15px; background: #d9534f; color: #fff; padding: 10px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 0.9rem;';
+            elCuerpo.appendChild(btnExterno);
+        }
+        btnExterno.style.display = 'inline-block';
+        btnExterno.href = noticia.enlace;
+        btnExterno.innerText = 'Ir a ver al portal original ↗';
+    }
+
+    if (modalImagenElem) {
+        modalImagenElem.style.display = 'block';
+        modalImagenElem.src = noticia.imagen;
+    }
+
+    const modal = document.getElementById('modal-noticia');
+    if (modal) modal.style.display = 'flex';
 }
 
 // -------------------------------------------------------------
