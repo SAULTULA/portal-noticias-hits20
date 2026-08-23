@@ -206,19 +206,25 @@ async function cargarNoticiasFacebook() {
             const titulo = item.querySelector("title")?.textContent || "Publicación de Facebook";
             const enlace = item.querySelector("link")?.textContent || "#";
             const pubDate = item.querySelector("pubDate")?.textContent || "";
+            const descripcionCompleta = item.querySelector("description")?.textContent || "";
+            
             let imagenUrl = imgFallback;
             const mediaContent = item.getElementsByTagName("media:content")[0] || item.getElementsByTagName("media:thumbnail")[0];
 
             if (mediaContent && mediaContent.getAttribute("url")) {
                 imagenUrl = mediaContent.getAttribute("url");
             } else {
-                const descripcion = item.querySelector("description")?.textContent || "";
-                const imgMatch = descripcion.match(/<img[^>]+src=["']([^"']+)["']/i);
+                const imgMatch = descripcionCompleta.match(/<img[^>]+src=["']([^"']+)["']/i);
                 if (imgMatch && imgMatch[1]) imagenUrl = imgMatch[1];
             }
 
+            // Limpiar descripción de etiquetas HTML para el texto del cuerpo en el modal
+            const textoLimpio = descripcionCompleta.replace(/<[^>]*>?/gm, '').trim();
+
             const card = document.createElement('article');
             card.className = 'card-noticia';
+            card.style.cursor = 'pointer';
+
             card.innerHTML = `
                 <div class="card-image-box">
                     <img src="${imagenUrl}" alt="${titulo}" onerror="this.src='${imgFallback}'">
@@ -227,17 +233,76 @@ async function cargarNoticiasFacebook() {
                     <span class="badge" style="background: #1877f2; color: #fff;">Facebook</span>
                     ${pubDate ? `<span style="font-size: 0.75rem; color: #777; display: block; margin-top: 5px;">${formatearFechaYHora(pubDate)}</span>` : ''}
                     <h3>${titulo}</h3>
-                    <a href="${enlace}" target="_blank" rel="noopener noreferrer" class="btn-read-more" style="display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
+                    <a href="${enlace}" target="_blank" rel="noopener noreferrer" class="btn-read-more" onclick="event.stopPropagation();" style="display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
                         Ver en Facebook ↗
                     </a>
                 </div>
             `;
+
+            // Clic en la tarjeta de Facebook para abrir Modal
+            card.addEventListener('click', () => {
+                abrirFacebookModal({
+                    categoria: 'Facebook',
+                    titulo: titulo,
+                    imagen: imagenUrl,
+                    cuerpo: textoLimpio || titulo,
+                    fecha: pubDate,
+                    enlace: enlace
+                });
+            });
+
             contenedor.appendChild(card);
         });
     } catch (err) {
         console.error("Error al cargar publicaciones de Facebook:", err);
         contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No se pudieron obtener las publicaciones de Facebook.</p>';
     }
+}
+
+// Función para mostrar publicaciones de Facebook dentro del Modal Emergente
+function abrirFacebookModal(noticia) {
+    const elCategoria = document.getElementById('modal-categoria');
+    const elTitulo = document.getElementById('modal-titulo');
+    const elCuerpo = document.getElementById('modal-cuerpo');
+    const elFecha = document.getElementById('modal-fecha');
+    const modalImagenElem = document.getElementById('modal-imagen');
+
+    if (elCategoria) {
+        elCategoria.innerText = noticia.categoria;
+        elCategoria.style.background = '#1877f2';
+    }
+    if (elTitulo) elTitulo.innerText = noticia.titulo;
+    if (elFecha) elFecha.innerText = noticia.fecha ? formatearFechaYHora(noticia.fecha) : '';
+    
+    let videoContainerModal = document.getElementById('modal-video-container');
+    if (videoContainerModal) videoContainerModal.innerHTML = '';
+
+    if (elCuerpo) {
+        elCuerpo.innerText = noticia.cuerpo ? `${noticia.cuerpo}\n\n` : '';
+        
+        let btnExterno = document.getElementById('btn-modal-externo');
+        if (!btnExterno) {
+            btnExterno = document.createElement('a');
+            btnExterno.id = 'btn-modal-externo';
+            btnExterno.target = '_blank';
+            btnExterno.rel = 'noopener noreferrer';
+            btnExterno.style.cssText = 'display: inline-block; margin-top: 15px; padding: 10px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 0.9rem;';
+            elCuerpo.appendChild(btnExterno);
+        }
+        btnExterno.style.display = 'inline-block';
+        btnExterno.style.background = '#1877f2';
+        btnExterno.style.color = '#fff';
+        btnExterno.href = noticia.enlace;
+        btnExterno.innerText = 'Ver publicación en Facebook ↗';
+    }
+
+    if (modalImagenElem) {
+        modalImagenElem.style.display = 'block';
+        modalImagenElem.src = noticia.imagen;
+    }
+
+    const modal = document.getElementById('modal-noticia');
+    if (modal) modal.style.display = 'flex';
 }
 
 async function cargarNoticiasMinutoUno() {
@@ -312,28 +377,31 @@ function abrirMinutoUnoModal(noticia) {
     const elFecha = document.getElementById('modal-fecha');
     const modalImagenElem = document.getElementById('modal-imagen');
 
-    if (elCategoria) elCategoria.innerText = noticia.categoria;
+    if (elCategoria) {
+        elCategoria.innerText = noticia.categoria;
+        elCategoria.style.background = '#d9534f';
+    }
     if (elTitulo) elTitulo.innerText = noticia.titulo;
     if (elFecha) elFecha.innerText = '';
     
-    // Si existe el reproductor de video de otras notas, lo limpia
     let videoContainerModal = document.getElementById('modal-video-container');
     if (videoContainerModal) videoContainerModal.innerHTML = '';
 
     if (elCuerpo) {
         elCuerpo.innerText = noticia.cuerpo ? `${noticia.cuerpo}\n\n` : '';
         
-        // Creamos o actualizamos el botón para ir al portal original
         let btnExterno = document.getElementById('btn-modal-externo');
         if (!btnExterno) {
             btnExterno = document.createElement('a');
             btnExterno.id = 'btn-modal-externo';
             btnExterno.target = '_blank';
             btnExterno.rel = 'noopener noreferrer';
-            btnExterno.style.cssText = 'display: inline-block; margin-top: 15px; background: #d9534f; color: #fff; padding: 10px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 0.9rem;';
+            btnExterno.style.cssText = 'display: inline-block; margin-top: 15px; padding: 10px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 0.9rem;';
             elCuerpo.appendChild(btnExterno);
         }
         btnExterno.style.display = 'inline-block';
+        btnExterno.style.background = '#d9534f';
+        btnExterno.style.color = '#fff';
         btnExterno.href = noticia.enlace;
         btnExterno.innerText = 'Ir a ver al portal original ↗';
     }
