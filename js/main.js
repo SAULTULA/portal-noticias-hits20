@@ -57,7 +57,8 @@ function renderizarNoticiasAppsScript(listaParaPintar) {
     if (provinciales) provinciales.innerHTML = '';
 
     const ahora = new Date();
-    const tresDiasEnMilisegundos = 3 * 24 * 60 * 60 * 1000;
+    // Ajustado exactamente a 72 horas (72h * 60m * 60s * 1000ms)
+    const limite72Horas = 72 * 60 * 60 * 1000;
     const terminoBusqueda = document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '';
 
     let listaOrdenada = [...listaParaPintar].sort((a, b) => {
@@ -80,9 +81,10 @@ function renderizarNoticiasAppsScript(listaParaPintar) {
         if (contenedor) {
             let fechaCruda = noticia.fecha || noticia.Fecha;
             let fechaNoticia = new Date(fechaCruda || 0);
-            let esMasDeTresDias = (ahora.getTime() - fechaNoticia.getTime()) > tresDiasEnMilisegundos;
-
-            if (esMasDeTresDias && !terminoBusqueda) return;
+            
+            // Si tiene más de 72 horas y no hay búsqueda activa, se descarta
+            let esMasDe72Horas = (ahora.getTime() - fechaNoticia.getTime()) > limite72Horas;
+            if (esMasDe72Horas && !terminoBusqueda) return;
 
             const card = document.createElement('article');
             card.className = 'card-noticia';
@@ -248,7 +250,14 @@ async function cargarNoticiasMinutoUno() {
             return;
         }
 
-        data.forEach(noticia => {
+        // Se saltan las primeras 2 filas (índices 0 y 1 del Sheet)
+        // Y filtra cualquier item cuyo título contenga "minuto 1" o "minuto uno"
+        const noticiasFiltradas = data.slice(2).filter(noticia => {
+            const tituloNoticia = (noticia.titulo || noticia.Noticia || '').toLowerCase().trim();
+            return !tituloNoticia.includes("minuto 1") && !tituloNoticia.includes("minuto uno");
+        }).slice(0, 6);
+
+        noticiasFiltradas.forEach(noticia => {
             const card = document.createElement('article');
             card.className = 'card-noticia';
             card.innerHTML = `
