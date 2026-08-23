@@ -256,6 +256,25 @@ body {
     flex-shrink: 0;
 }
 
+/* --- AJUSTE AGREGADO PARA EL CONTADOR Y BANDERAS --- */
+.contador-widget, 
+.sidebar iframe[src*="revolvermaps"],
+.sidebar .widget-contador-container,
+.sidebar div[id*="revolvermaps"] {
+    width: 100% !important;
+    min-height: 480px !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block;
+}
+
+.sidebar iframe {
+    width: 100% !important;
+    min-height: 480px !important;
+    border: none;
+}
+/* --------------------------------------------------- */
+
 .search-widget input {
     width: 100%;
     padding: 12px 15px;
