@@ -1,22 +1,23 @@
 // URLs de ejecutables de Google Apps Script
 const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuKcm3VoIeUyc4FJGG962DkdMf2MYQYSkhBzji40oRmH1p/exec";
-const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbwxGlsBqjU8Kq0g9x-J3c94y719y3X03f7X2t721_4l6l6/exec";
+// URL corregida de Minuto 1 (sin caracteres extra al final)
+const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbzR7SwIz2RhDD5XS9Cu15qMz7jvimJBIIQ-VBG3kcIOlInJlDxw2T-jpnpkC65kAAng/exec";
 
-// Feeds RSS activos
+// Feed RSS de Facebook
 const urlRssFacebook = "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml";
 const imgFallback = "logo.png";
 
-let todasLasNoticias = []; // Guardará noticias de Apps Script
+let todasLasNoticias = [];
 
 document.addEventListener("DOMContentLoaded", function () {
-    // 1. Cargar noticias desde Google Apps Script (Provinciales, Nacionales, Internacionales)
+    // 1. Carga de Noticias de Apps Script (Provinciales, Nacionales, Internacionales)
     cargarNoticiasAppsScript();
 
-    // 2. Cargar Facebook y Minuto 1
+    // 2. Carga de Facebook y Minuto 1
     cargarNoticiasFacebook();
     cargarNoticiasMinutoUno();
 
-    // 3. Audio por defecto
+    // 3. Reproductor
     const audio = document.getElementById('audio-stream');
     if (audio) {
         audio.volume = 0.4;
@@ -26,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // -------------------------------------------------------------
-// APPS SCRIPT: PROVINCIALES, NACIONALES E INTERNACIONALES
+// 1. APPS SCRIPT: PROVINCIALES, NACIONALES E INTERNACIONALES
 // -------------------------------------------------------------
 function cargarNoticiasAppsScript() {
     fetch(urlAPI)
@@ -85,6 +86,7 @@ function renderizarNoticiasAppsScript(listaParaPintar) {
 
             const card = document.createElement('article');
             card.className = 'card-noticia';
+            card.style.cursor = 'pointer';
 
             let fechaTexto = formatearFechaYHora(fechaCruda, noticia.hora || noticia.Hora);
             let contenidoMultimediaHtml = obtenerHtmlMultimedia(noticia.video || noticia.Video, noticia.imagen || noticia.Imagen);
@@ -123,26 +125,33 @@ function obtenerHtmlMultimedia(urlVideo, urlImagen) {
 }
 
 // -------------------------------------------------------------
-// MODAL DE NOTICIA
+// 2. MODAL DE NOTICIAS
 // -------------------------------------------------------------
 function abrirNoticiaModal(noticia) {
-    document.getElementById('modal-categoria').innerText = noticia.categoria || '';
-    document.getElementById('modal-titulo').innerText = noticia.titulo || '';
-    document.getElementById('modal-cuerpo').innerText = noticia.cuerpo || '';
-
+    const elCategoria = document.getElementById('modal-categoria');
+    const elTitulo = document.getElementById('modal-titulo');
+    const elCuerpo = document.getElementById('modal-cuerpo');
+    const elFecha = document.getElementById('modal-fecha');
     const modalImagenElem = document.getElementById('modal-imagen');
+
+    if (elCategoria) elCategoria.innerText = noticia.categoria || '';
+    if (elTitulo) elTitulo.innerText = noticia.titulo || '';
+    if (elCuerpo) elCuerpo.innerText = noticia.cuerpo || noticia.descripcion || '';
+    if (elFecha) elFecha.innerText = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
+
     if (modalImagenElem) {
-        let multimediaModalHtml = obtenerHtmlMultimedia(noticia.video || noticia.Video, noticia.imagen || noticia.Imagen);
         let parentModalImg = modalImagenElem.parentNode;
         let videoContainerModal = document.getElementById('modal-video-container');
 
         if (noticia.video && noticia.video.trim() !== "") {
+            let multimediaModalHtml = obtenerHtmlMultimedia(noticia.video, noticia.imagen);
             if (!videoContainerModal) {
                 videoContainerModal = document.createElement('div');
                 videoContainerModal.id = 'modal-video-container';
                 videoContainerModal.style.width = '100%';
                 videoContainerModal.style.height = '300px';
                 videoContainerModal.style.background = '#000';
+                videoContainerModal.style.marginBottom = '15px';
                 parentModalImg.insertBefore(videoContainerModal, modalImagenElem);
             }
             videoContainerModal.innerHTML = multimediaModalHtml;
@@ -154,21 +163,21 @@ function abrirNoticiaModal(noticia) {
         }
     }
 
-    const elFecha = document.getElementById('modal-fecha');
-    if (elFecha) elFecha.innerText = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
+    const modal = document.getElementById('modal-noticia');
+    if (modal) modal.style.display = 'flex';
 
-    document.getElementById('modal-noticia').style.display = 'flex';
     const nuevaURL = `${window.location.pathname}?id=${noticia.id}`;
     window.history.pushState({ path: nuevaURL }, '', nuevaURL);
 }
 
 function cerrarNoticia() {
-    document.getElementById('modal-noticia').style.display = 'none';
+    const modal = document.getElementById('modal-noticia');
+    if (modal) modal.style.display = 'none';
     window.history.pushState({ path: window.location.pathname }, '', window.location.pathname);
 }
 
 // -------------------------------------------------------------
-// NOTICIAS FACEBOOK Y MINUTO 1
+// 3. FACEBOOK Y MINUTO 1
 // -------------------------------------------------------------
 async function cargarNoticiasFacebook() {
     const contenedor = document.getElementById('grid-facebook');
@@ -244,12 +253,12 @@ async function cargarNoticiasMinutoUno() {
             card.className = 'card-noticia';
             card.innerHTML = `
                 <div class="card-image-box">
-                    <img src="${noticia.imagen || noticia.Imagen}" alt="${noticia.titulo || noticia.Noticia}" onerror="this.src='${imgFallback}'">
+                    <img src="${noticia.imagen || noticia.Imagen || imgFallback}" alt="${noticia.titulo || noticia.Noticia || 'Noticia'}" onerror="this.src='${imgFallback}'">
                 </div>
                 <div class="card-body">
-                    <span class="badge">${noticia.seccion || noticia.categoria || 'Minuto 1'}</span>
-                    <h3>${noticia.titulo || noticia.Noticia}</h3>
-                    <a href="${noticia.enlace || noticia.Enlace}" target="_blank" rel="noopener noreferrer" class="btn-read-more" style="display: inline-block; margin-top: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
+                    <span class="badge" style="background: #d9534f; color: #fff;">${noticia.seccion || noticia.categoria || 'Minuto 1'}</span>
+                    <h3 style="font-weight: 600; font-size: 0.9rem; margin-top: 6px;">${noticia.titulo || noticia.Noticia || 'Sin título'}</h3>
+                    <a href="${noticia.enlace || noticia.Enlace || '#'}" target="_blank" rel="noopener noreferrer" class="btn-read-more" style="display: inline-block; margin-top: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold; color: #d9534f;">
                         Leer más ↗
                     </a>
                 </div>
@@ -263,7 +272,7 @@ async function cargarNoticiasMinutoUno() {
 }
 
 // -------------------------------------------------------------
-// AUXILIARES, BÚSQUEDA Y REPRODUCTOR
+// 4. AUXILIARES, BÚSQUEDA Y REPRODUCTOR
 // -------------------------------------------------------------
 function formatearFechaYHora(fechaCruda, horaCruda) {
     if (!fechaCruda) return '';
