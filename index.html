@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -142,7 +142,7 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN FACEBOOK (ARRIBA DE PROVINCIALES) -->
+            <!-- SECCIÓN FACEBOOK -->
             <section class="categoria-section">
                 <h2>Noticias Facebook Hits20RadioOnline</h2>
                 <div class="grid" id="grid-facebook">
@@ -239,15 +239,15 @@
         <p style="margin: 0; font-size: 0.85rem; opacity: 0.75;">&copy; 2026 Portal de Noticias. Todos los derechos reservados.</p>
     </footer>
 
-    <!-- MODAL DE NOTICIA -->
-    <div id="modal-noticia" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="cerrarNoticia()">&times;</span>
-            <span id="modal-categoria" class="badge"></span>
-            <span id="modal-fecha" style="font-size: 0.75rem; color: #d9534f; display: block; margin: 5px 0 10px 0; font-weight: bold;"></span>
-            <h2 id="modal-titulo"></h2>
-            <img id="modal-imagen" src="" alt="">
-            <p id="modal-cuerpo"></p>
+    <!-- MODAL DE NOTICIA COMPLETA -->
+    <div id="modal-noticia" class="modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;">
+        <div class="modal-content" style="background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 700px; border-radius: 8px; position: relative; max-height: 90vh; overflow-y: auto;">
+            <span class="close-btn" onclick="cerrarNoticia()" style="position: absolute; right: 15px; top: 10px; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <span id="modal-categoria" class="badge" style="background: #d9534f; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;"></span>
+            <span id="modal-fecha" style="font-size: 0.75rem; color: #d9534f; display: block; margin: 8px 0 12px 0; font-weight: bold;"></span>
+            <h2 id="modal-titulo" style="margin-bottom: 15px; font-size: 1.4rem;"></h2>
+            <img id="modal-imagen" src="" alt="" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 15px;">
+            <p id="modal-cuerpo" style="line-height: 1.6; color: #333; font-size: 0.95rem; white-space: pre-wrap;"></p>
         </div>
     </div>
 
@@ -287,13 +287,14 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE CLIMA Y ARRASTRE -->
+    <!-- SCRIPT DE CLIMA -->
     <script>
         const apiKey = 'e275965fe86eeeabba320d7b99bb4faf';
         const cities = ["San Luis", "Villa Mercedes", "Merlo", "La Punta", "Juana Koslay", "El Trapiche"];
 
         async function loadWeather() {
             const tickerContainer = document.getElementById('weather-ticker');
+            if(!tickerContainer) return;
             tickerContainer.innerHTML = '';
 
             for (const city of cities) {
@@ -323,29 +324,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', loadWeather);
-
-        const modalFlotante = document.getElementById('radio-modal-flotante');
-        const headerDrag = document.getElementById('radio-header-drag');
-        let isDragging = false, offsetX, offsetY;
-
-        headerDrag.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            offsetX = e.clientX - modalFlotante.offsetLeft;
-            offsetY = e.clientY - modalFlotante.offsetTop;
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                modalFlotante.style.left = (e.clientX - offsetX) + 'px';
-                modalFlotante.style.top = (e.clientY - offsetY) + 'px';
-                modalFlotante.style.bottom = 'auto'; 
-                modalFlotante.style.right = 'auto';
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
     </script>
 
     <!-- PWA & SERVICE WORKER -->
@@ -363,25 +341,27 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            btnInstalar.classList.add('visible');
+            if(btnInstalar) btnInstalar.classList.add('visible');
         });
 
-        btnInstalar.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            btnInstalar.disabled = true;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            deferredPrompt = null;
-            btnInstalar.classList.remove('visible');
-        });
+        if(btnInstalar) {
+            btnInstalar.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                btnInstalar.disabled = true;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                btnInstalar.classList.remove('visible');
+            });
+        }
 
         window.addEventListener('appinstalled', () => {
-            btnInstalar.classList.remove('visible');
+            if(btnInstalar) btnInstalar.classList.remove('visible');
             deferredPrompt = null;
         });
 
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-            btnInstalar.classList.remove('visible');
+            if(btnInstalar) btnInstalar.classList.remove('visible');
         }
     </script>
 
