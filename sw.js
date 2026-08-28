@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hits20-cache-v1';
+const CACHE_NAME = 'hits20-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,7 +7,7 @@ const urlsToCache = [
   '/logo.png'
 ];
 
-// Instalación del Service Worker
+// InstalaciÃ³n del Service Worker
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -17,7 +17,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activación y limpieza de cachés antiguas
+// ActivaciÃ³n y limpieza de cachÃ©s antiguas
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -32,7 +32,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Interceptación de peticiones para funcionamiento offline
+// InterceptaciÃ³n de peticiones para funcionamiento offline
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
