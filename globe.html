@@ -362,12 +362,12 @@ const AnimatedNumber = memo(({ value }) => {
 });
 
 const Stat = memo(({ label, value, Icon, accent }) => (
-    <div className="flex-1 flex flex-col items-center py-2 px-2 border-r border-white/5 last:border-0">
-        <div className={`flex items-center gap-1 mb-0.5 ${accent || 'text-blue-400'}`}>
-            <Icon size={10} strokeWidth={2.5}/>
-            <span className="text-[8px] font-bold uppercase tracking-widest">{label}</span>
+    <div className="flex-1 flex flex-col items-center py-1.5 px-1 border-r border-white/5 last:border-0 min-w-0">
+        <div className={`flex items-center gap-0.5 mb-0.5 ${accent || 'text-blue-400'}`}>
+            <Icon size={9} strokeWidth={2.5}/>
+            <span className="text-[7px] font-bold uppercase tracking-wider truncate">{label}</span>
         </div>
-        <span className="text-base font-bold text-white leading-tight"><AnimatedNumber value={value} /></span>
+        <span className="text-sm font-bold text-white leading-tight truncate"><AnimatedNumber value={value} /></span>
     </div>
 ));
 
@@ -452,52 +452,70 @@ const NationsPopover = ({ cCounts, onClose, onNationClick }) => {
     );
 };
 
-// ─── Utilidades de fecha para claves de contador ────────────────────────────
-const getWeekNum = (d) => {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const day = date.getUTCDay() || 7;
-    date.setUTCDate(date.getUTCDate() + 4 - day);
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-};
-
-// ─── Registro de visita real con CountAPI ───────────────────────────────────
-// Namespace único para este sitio — no compartido con otros proyectos
-const SITE_NS = 'hits20radio-portal';
-
-async function registrarVisitaReal(setStats) {
-    const now = new Date();
-    const todayKey  = now.toISOString().split('T')[0];                        // 2026-08-27
-    const weekKey   = `${now.getFullYear()}-W${String(getWeekNum(now)).padStart(2,'0')}`; // 2026-W35
-    const monthKey  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; // 2026-08
-    const totalKey  = 'total';
-
-    const BASE = 'https://api.countapi.xyz/hit';
-
-    // Carga desde localStorage como valores iniciales mientras llega la API
-    const cached = JSON.parse(localStorage.getItem(`${SITE_NS}_stats`) || 'null');
-    if (cached) setStats(cached);
-
+// ─── Registro de visita real usando tu API de Gente de Medios ────────────────
+async function registrarVisitaReal(setStats, setVisitors, setCCounts, setPCounts) {
     try {
-        const [dayR, weekR, monthR, totalR] = await Promise.all([
-            fetch(`${BASE}/${SITE_NS}/${todayKey}`).then(r => r.json()),
-            fetch(`${BASE}/${SITE_NS}/${weekKey}`).then(r => r.json()),
-            fetch(`${BASE}/${SITE_NS}/${monthKey}`).then(r => r.json()),
-            fetch(`${BASE}/${SITE_NS}/${totalKey}`).then(r => r.json()),
-        ]);
-        const real = {
-            day:   dayR.value   || 0,
-            week:  weekR.value  || 0,
-            month: monthR.value || 0,
-            total: totalR.value || 0,
-        };
-        setStats(real);
-        localStorage.setItem(`${SITE_NS}_stats`, JSON.stringify(real));
+        // Llama al mismo backend que usa tu otra web, pero con un ID único para esta
+        const res = await fetch('https://gente-de-medios.vercel.app/api/track?site_id=portal-noticias-hits20');
+        const data = await res.json();
+        
+        if (data.success) {
+            setStats({
+                day: data.stats.today,
+                week: data.stats.week,
+                month: data.stats.month,
+                total: data.stats.total
+            });
+
+            // Convertir las locaciones reales de la API en marcadores para el globo
+            const realVisitors = [];
+            const cc = {};
+            const pp = {};
+            
+            let vId = 0;
+            data.stats.locations.forEach(loc => {
+                const code = loc.code.toUpperCase();
+                if (DB[code]) {
+                    const country = DB[code];
+                    cc[code] = (cc[code] || 0) + loc.count;
+                    
+                    // Buscar si tenemos las coordenadas de la ciudad exacta
+                    let cityMatch = Object.keys(country.p).find(c => c.toLowerCase() === loc.city.toLowerCase());
+                    // Si no la tenemos, usamos la primera ciudad (capital/principal)
+                    if (!cityMatch) cityMatch = Object.keys(country.p)[0];
+                    
+                    pp[cityMatch] = (pp[cityMatch] || 0) + loc.count;
+                    const [lat, lng] = country.p[cityMatch];
+                    
+                    // Agregar un marcador por cada visitante en esa ciudad (limitado visualmente a 5 por ciudad para no saturar)
+                    const visualCount = Math.min(loc.count, 5);
+                    for(let i = 0; i < visualCount; i++) {
+                        realVisitors.push({
+                            id: ++vId,
+                            ck: code,
+                            cn: country.n,
+                            fl: country.f,
+                            pv: cityMatch,
+                            lat,
+                            lng
+                        });
+                    }
+                }
+            });
+            
+            setVisitors(realVisitors);
+            setCCounts(cc);
+            setPCounts(pp);
+            
+            // Tomamos una locación al azar de los reales como el "userLoc" para el pulso verde
+            if (realVisitors.length > 0) {
+                return realVisitors[Math.floor(Math.random() * realVisitors.length)];
+            }
+        }
     } catch (err) {
-        // CountAPI no disponible → usar caché local o valores neutros
-        if (!cached) setStats({ day: 0, week: 0, month: 0, total: 0 });
-        console.warn('[GlobalNet] CountAPI no disponible, usando caché local.');
+        console.warn('[GlobalNet] Error conectando con API:', err);
     }
+    return null;
 }
 
 function App() {
@@ -512,28 +530,13 @@ function App() {
     const tex = useEarthTextures();
 
     useEffect(() => {
-        // Visualización animada del globo (marcadores decorativos)
-        const me = newVisitor();
-        setUserLoc(me);
-        const hist = Array.from({ length: 45 }, newVisitor);
-        setVisitors(hist);
-        const cc = {}, pp = {};
-        [...hist, me].forEach(v => { cc[v.ck] = (cc[v.ck] || 0) + 1; pp[v.pv] = (pp[v.pv] || 0) + 1; });
-        setCCounts(cc);
-        setPCounts(pp);
+        // Carga inicial de datos reales
+        registrarVisitaReal(setStats, setVisitors, setCCounts, setPCounts).then(uloc => {
+            if (uloc) setUserLoc(uloc);
+        });
 
-        // Animación de marcadores en el globo (solo visual, no afecta los contadores)
-        const iv = setInterval(() => {
-            const nv = newVisitor();
-            setVisitors(prev => [nv, ...prev].slice(0, 80));
-            setCCounts(prev => ({ ...prev, [nv.ck]: (prev[nv.ck] || 0) + 1 }));
-            setPCounts(prev => ({ ...prev, [nv.pv]: (prev[nv.pv] || 0) + 1 }));
-        }, 1800);
-
-        // Contadores REALES: registrar visita y obtener datos de CountAPI
-        registrarVisitaReal(setStats);
-
-        return () => clearInterval(iv);
+        // Nota: Se ha eliminado el setInterval para evitar 
+        // contar múltiples visitas cada 30 segundos (igual que el comportamiento nativo de la API).
     }, []);
 
     const handleNationClick = useCallback(code => setSelected(code), []);
@@ -591,8 +594,8 @@ function App() {
                     <span className="text-[10px] font-bold text-emerald-300 tracking-[0.2em] uppercase">Monitoreo en vivo</span>
                 </div>
             </motion.div>
-            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 100 }} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-                <div className="glass rounded-2xl px-2 py-1 flex items-stretch">
+            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 100 }} className="absolute bottom-2 left-0 right-0 z-10 flex justify-center px-1">
+                <div className="glass rounded-xl px-1 py-1 flex items-stretch w-full max-w-[280px]">
                     <Stat label="Hoy" value={stats.day} Icon={Clock} />
                     <Stat label="Semana" value={stats.week} Icon={Calendar} />
                     <Stat label="Mes" value={stats.month} Icon={TrendingUp} />
