@@ -455,8 +455,9 @@ const NationsPopover = ({ cCounts, onClose, onNationClick }) => {
 // ─── Registro de visita real usando tu API de Gente de Medios ────────────────
 async function registrarVisitaReal(setStats, setVisitors, setCCounts, setPCounts) {
     try {
-        // Llama al mismo backend que usa tu otra web, pero con un ID único para esta, agregando timestamp para evitar caché
-        const res = await fetch(`https://gente-de-medios.vercel.app/api/track?site_id=portal-noticias-hits20&t=${Date.now()}`);
+        // Se utiliza un proxy CORS (corsproxy.io) debido a que la API original rechaza peticiones de otros dominios (falta de Access-Control-Allow-Origin)
+        const targetUrl = `https://gente-de-medios.vercel.app/api/track?site_id=portal-noticias-hits20&t=${Date.now()}`;
+        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
         const data = await res.json();
         
         if (data.success) {
