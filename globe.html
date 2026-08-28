@@ -455,16 +455,16 @@ const NationsPopover = ({ cCounts, onClose, onNationClick }) => {
 // ─── Registro de visita real usando tu API de Gente de Medios ────────────────
 async function registrarVisitaReal(setStats, setVisitors, setCCounts, setPCounts) {
     try {
-        // Llama al mismo backend que usa tu otra web, pero con un ID único para esta
-        const res = await fetch('https://gente-de-medios.vercel.app/api/track?site_id=portal-noticias-hits20');
+        // Llama al mismo backend que usa tu otra web, pero con un ID único para esta, agregando timestamp para evitar caché
+        const res = await fetch(`https://gente-de-medios.vercel.app/api/track?site_id=portal-noticias-hits20&t=${Date.now()}`);
         const data = await res.json();
         
         if (data.success) {
             setStats({
-                day: data.stats.today,
-                week: data.stats.week,
-                month: data.stats.month,
-                total: data.stats.total
+                day: data.stats.today || 0,
+                week: data.stats.week || 0,
+                month: data.stats.month || 0,
+                total: data.stats.total || 0
             });
 
             // Convertir las locaciones reales de la API en marcadores para el globo
@@ -473,35 +473,40 @@ async function registrarVisitaReal(setStats, setVisitors, setCCounts, setPCounts
             const pp = {};
             
             let vId = 0;
-            data.stats.locations.forEach(loc => {
-                const code = loc.code.toUpperCase();
-                if (DB[code]) {
-                    const country = DB[code];
-                    cc[code] = (cc[code] || 0) + loc.count;
-                    
-                    // Buscar si tenemos las coordenadas de la ciudad exacta
-                    let cityMatch = Object.keys(country.p).find(c => c.toLowerCase() === loc.city.toLowerCase());
-                    // Si no la tenemos, usamos la primera ciudad (capital/principal)
-                    if (!cityMatch) cityMatch = Object.keys(country.p)[0];
-                    
-                    pp[cityMatch] = (pp[cityMatch] || 0) + loc.count;
-                    const [lat, lng] = country.p[cityMatch];
-                    
-                    // Agregar un marcador por cada visitante en esa ciudad (limitado visualmente a 5 por ciudad para no saturar)
-                    const visualCount = Math.min(loc.count, 5);
-                    for(let i = 0; i < visualCount; i++) {
-                        realVisitors.push({
-                            id: ++vId,
-                            ck: code,
-                            cn: country.n,
-                            fl: country.f,
-                            pv: cityMatch,
-                            lat,
-                            lng
+            if (data.stats.locations && Array.isArray(data.stats.locations)) {
+                data.stats.locations.forEach(loc => {
+                    const code = (loc.code || 'AR').toUpperCase();
+                    if (DB[code]) {
+                        const country = DB[code];
+                        cc[code] = (cc[code] || 0) + (loc.count || 1);
+                        
+                        // Buscar si tenemos las coordenadas de la ciudad exacta
+                        let cityMatch = Object.keys(country.p).find(c => {
+                            const cName = loc.city ? loc.city.toLowerCase() : '';
+                            return cName && c.toLowerCase() === cName;
                         });
+                        // Si no la tenemos, usamos la primera ciudad (capital/principal)
+                        if (!cityMatch) cityMatch = Object.keys(country.p)[0];
+                        
+                        pp[cityMatch] = (pp[cityMatch] || 0) + (loc.count || 1);
+                        const [lat, lng] = country.p[cityMatch];
+                        
+                        // Agregar un marcador por cada visitante en esa ciudad (limitado visualmente a 5 por ciudad para no saturar)
+                        const visualCount = Math.min(loc.count || 1, 5);
+                        for(let i = 0; i < visualCount; i++) {
+                            realVisitors.push({
+                                id: ++vId,
+                                ck: code,
+                                cn: country.n,
+                                fl: country.f,
+                                pv: cityMatch,
+                                lat,
+                                lng
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
             
             setVisitors(realVisitors);
             setCCounts(cc);
