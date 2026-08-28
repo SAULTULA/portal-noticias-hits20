@@ -2,10 +2,15 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GlobalNet · Monitor Mundial HD</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.8/400.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.8/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.8/700.css">
+
 <script type="importmap">
 {
     "imports": {
@@ -19,14 +24,22 @@
     }
 }
 </script>
+
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
 <style>
     html, body { margin:0; padding:0; background:#000; overflow:hidden; height:100%; font-family: 'Space Grotesk', system-ui, sans-serif; }
     #root { height:100vh; }
     .scroll-thin::-webkit-scrollbar { width:3px; height:3px; }
     .scroll-thin::-webkit-scrollbar-track { background:transparent; }
     .scroll-thin::-webkit-scrollbar-thumb { background:rgba(59,130,246,.4); border-radius:2px; }
-    .glass { background: linear-gradient(180deg, rgba(10,16,32,0.78), rgba(6,10,22,0.68)); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); border: 1px solid rgba(255,255,255,.09); box-shadow: 0 10px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06); }
+    .glass {
+        background: linear-gradient(180deg, rgba(10,16,32,0.78), rgba(6,10,22,0.68));
+        backdrop-filter: blur(16px) saturate(140%);
+        -webkit-backdrop-filter: blur(16px) saturate(140%);
+        border: 1px solid rgba(255,255,255,.09);
+        box-shadow: 0 10px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+    }
     .loader-ring { width:56px; height:56px; border-radius:50%; border:3px solid rgba(59,130,246,.15); border-top-color:#3b82f6; animation:spin 0.9s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .btn-nations { background: linear-gradient(135deg, rgba(37,99,235,.35), rgba(6,182,212,.35)); border: 1px solid rgba(59,130,246,.5); transition: all .2s ease; }
@@ -39,8 +52,561 @@
 </head>
 <body>
 <div id="root"></div>
+
 <script type="text/babel" data-type="module">
-/* The full React/Three.js globe code from cont.html (omitted for brevity) */
+import React, { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
+import * as THREE from 'three';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Stars } from '@react-three/drei';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, Calendar, Clock, X, Globe2, ZoomIn, ZoomOut, TrendingUp } from 'lucide-react';
+
+const DB = {
+    AR:{n:'Argentina',f:'🇦🇷',p:{'Buenos Aires':[-34.60,-58.38],'Córdoba':[-31.42,-64.19],'Santa Fe':[-31.63,-60.70],'Mendoza':[-32.89,-68.85],'Tucumán':[-26.81,-65.22],'Salta':[-24.79,-65.41],'CABA':[-34.60,-58.38]}},
+    BO:{n:'Bolivia',f:'🇧🇴',p:{'La Paz':[-16.50,-68.15],'Santa Cruz':[-17.78,-63.18],'Cochabamba':[-17.39,-66.16]}},
+    BR:{n:'Brasil',f:'🇧🇷',p:{'São Paulo':[-23.55,-46.63],'Río de Janeiro':[-22.91,-43.17],'Brasilia':[-15.79,-47.88],'Salvador':[-12.98,-38.50]}},
+    CL:{n:'Chile',f:'🇨🇱',p:{'Metropolitana':[-33.45,-70.67],'Valparaíso':[-33.05,-71.61],'Biobío':[-37.47,-72.35],'Antofagasta':[-23.65,-70.40]}},
+    CO:{n:'Colombia',f:'🇨🇴',p:{'Bogotá D.C.':[4.71,-74.07],'Antioquia':[6.24,-75.58],'Valle del Cauca':[3.45,-76.53],'Atlántico':[10.97,-74.78]}},
+    CR:{n:'Costa Rica',f:'🇨🇷',p:{'San José':[9.93,-84.08]}},
+    CU:{n:'Cuba',f:'🇨🇺',p:{'La Habana':[23.11,-82.37]}},
+    DO:{n:'Rep. Dominicana',f:'🇩🇴',p:{'Distrito Nacional':[18.48,-69.93]}},
+    EC:{n:'Ecuador',f:'🇪🇨',p:{'Pichincha':[-0.18,-78.47],'Guayas':[-2.17,-79.92]}},
+    GT:{n:'Guatemala',f:'🇬🇹',p:{'Guatemala':[14.63,-90.51]}},
+    HN:{n:'Honduras',f:'🇭🇳',p:{'Francisco Morazán':[14.10,-87.21]}},
+    MX:{n:'México',f:'🇲🇽',p:{'CDMX':[19.43,-99.13],'Jalisco':[20.66,-103.35],'Nuevo León':[25.69,-100.32],'Yucatán':[20.97,-89.59]}},
+    NI:{n:'Nicaragua',f:'🇳🇮',p:{'Managua':[12.13,-86.25]}},
+    PA:{n:'Panamá',f:'🇵🇦',p:{'Panamá':[8.98,-79.52]}},
+    PE:{n:'Perú',f:'🇵🇪',p:{'Lima':[-12.05,-77.04],'Cusco':[-13.53,-71.97]}},
+    PR:{n:'Puerto Rico',f:'🇵🇷',p:{'San Juan':[18.47,-66.12]}},
+    PY:{n:'Paraguay',f:'🇵🇾',p:{'Asunción':[-25.26,-57.57]}},
+    SV:{n:'El Salvador',f:'🇸🇻',p:{'San Salvador':[13.69,-89.22]}},
+    UY:{n:'Uruguay',f:'🇺🇾',p:{'Montevideo':[-34.90,-56.19]}},
+    VE:{n:'Venezuela',f:'🇻🇪',p:{'Caracas':[10.48,-66.90],'Zulia':[10.65,-71.64]}},
+    US:{n:'EE.UU.',f:'🇺🇸',p:{'California':[36.78,-119.42],'New York':[43.30,-74.22],'Texas':[31.97,-99.90],'Florida':[27.66,-81.52]}},
+    CA:{n:'Canadá',f:'🇨🇦',p:{'Toronto':[43.65,-79.38],'Vancouver':[49.28,-123.12],'Montreal':[45.50,-73.57]}},
+    ES:{n:'España',f:'🇪🇸',p:{'Madrid':[40.42,-3.70],'Cataluña':[41.39,2.17],'Andalucía':[37.39,-5.98],'Valencia':[39.47,-0.38]}},
+    IT:{n:'Italia',f:'🇮🇹',p:{'Lazio':[41.90,12.50],'Lombardía':[45.46,9.19],'Véneto':[45.44,12.32],'Toscana':[43.77,11.25],'Campania':[40.85,14.27],'Sicilia':[38.12,13.36]}},
+    RU:{n:'Rusia',f:'🇷🇺',p:{'Moscú':[55.76,37.62],'San Petersburgo':[59.93,30.34],'Novosibirsk':[55.01,82.93]}},
+    UA:{n:'Ucrania',f:'🇺🇦',p:{'Kiev':[50.45,30.52],'Járkov':[49.99,36.23],'Odesa':[46.48,30.72],'Leópolis':[49.84,24.03]}},
+    FR:{n:'Francia',f:'🇫🇷',p:{'París':[48.86,2.35],'Marsella':[43.30,5.37],'Lyon':[45.76,4.84]}},
+    DE:{n:'Alemania',f:'🇩🇪',p:{'Berlín':[52.52,13.40],'Múnich':[48.14,11.58],'Hamburgo':[53.55,9.99]}},
+    GB:{n:'Reino Unido',f:'🇬🇧',p:{'Londres':[51.51,-0.13],'Mánchester':[53.48,-2.24],'Birmingham':[52.49,-1.90]}},
+    PT:{n:'Portugal',f:'🇵🇹',p:{'Lisboa':[38.72,-9.14],'Oporto':[41.16,-8.61]}},
+    NL:{n:'Países Bajos',f:'🇳🇱',p:{'Ámsterdam':[52.37,4.90],'Róterdam':[51.92,4.48]}},
+    BE:{n:'Bélgica',f:'🇧🇪',p:{'Bruselas':[50.85,4.35]}},
+    CH:{n:'Suiza',f:'🇨🇭',p:{'Zúrich':[47.38,8.54],'Ginebra':[46.20,6.14]}},
+    AT:{n:'Austria',f:'🇦🇹',p:{'Viena':[48.21,16.37]}},
+    PL:{n:'Polonia',f:'🇵🇱',p:{'Varsovia':[52.23,21.01],'Cracovia':[50.06,19.94]}},
+    GR:{n:'Grecia',f:'🇬🇷',p:{'Atenas':[37.98,23.73]}},
+    SE:{n:'Suecia',f:'🇸🇪',p:{'Estocolmo':[59.33,18.07]}},
+    NO:{n:'Noruega',f:'🇳🇴',p:{'Oslo':[59.91,10.75]}},
+    DK:{n:'Dinamarca',f:'🇩🇰',p:{'Copenhague':[55.68,12.57]}},
+    FI:{n:'Finlandia',f:'🇫🇮',p:{'Helsinki':[60.17,24.94]}},
+    IE:{n:'Irlanda',f:'🇮🇪',p:{'Dublín':[53.35,-6.26]}},
+    RO:{n:'Rumania',f:'🇷🇴',p:{'Bucarest':[44.43,26.10]}},
+    HU:{n:'Hungría',f:'🇭🇺',p:{'Budapest':[47.50,19.04]}},
+    CZ:{n:'Rep. Checa',f:'🇨🇿',p:{'Praga':[50.08,14.44]}},
+    HR:{n:'Croacia',f:'🇭🇷',p:{'Zagreb':[45.81,15.98]}},
+    SA:{n:'Arabia Saudita',f:'🇸🇦',p:{'Riad':[24.71,46.68],'Yeda':[21.54,39.17],'La Meca':[21.43,39.83]}},
+    QA:{n:'Qatar',f:'🇶🇦',p:{'Doha':[25.29,51.53]}},
+    AE:{n:'Emiratos Árabes',f:'🇦🇪',p:{'Dubái':[25.20,55.27],'Abu Dabi':[24.45,54.65]}},
+    IL:{n:'Israel',f:'🇮🇱',p:{'Jerusalén':[31.77,35.21],'Tel Aviv':[32.09,34.78]}},
+    TR:{n:'Turquía',f:'🇹🇷',p:{'Estambul':[41.01,28.98],'Ankara':[39.93,32.86]}},
+    IR:{n:'Irán',f:'🇮🇷',p:{'Teherán':[35.69,51.39]}},
+    IQ:{n:'Irak',f:'🇮🇶',p:{'Bagdad':[33.31,44.37]}},
+    KW:{n:'Kuwait',f:'🇰🇼',p:{'Ciudad de Kuwait':[29.38,47.98]}},
+    OM:{n:'Omán',f:'🇴🇲',p:{'Mascate':[23.59,58.41]}},
+    JO:{n:'Jordania',f:'🇯🇴',p:{'Amán':[31.95,35.93]}},
+    EG:{n:'Egipto',f:'🇪🇬',p:{'El Cairo':[30.04,31.24]}},
+    CN:{n:'China',f:'🇨🇳',p:{'Pekín':[39.90,116.40],'Shanghái':[31.23,121.47],'Shenzhen':[22.54,114.06]}},
+    JP:{n:'Japón',f:'🇯🇵',p:{'Tokio':[35.68,139.69],'Osaka':[34.69,135.50],'Kioto':[35.01,135.77]}},
+    KR:{n:'Corea del Sur',f:'🇰🇷',p:{'Seúl':[37.57,126.98],'Busan':[35.18,129.08]}},
+    IN:{n:'India',f:'🇮🇳',p:{'Nueva Delhi':[28.61,77.21],'Bombay':[19.08,72.88],'Bangalore':[12.97,77.59]}},
+    ID:{n:'Indonesia',f:'🇮🇩',p:{'Yakarta':[-6.21,106.85],'Bali':[-8.65,115.22]}},
+    TH:{n:'Tailandia',f:'🇹🇭',p:{'Bangkok':[13.76,100.50]}},
+    VN:{n:'Vietnam',f:'🇻🇳',p:{'Hanói':[21.03,105.85],'Ho Chi Minh':[10.82,106.63]}},
+    PH:{n:'Filipinas',f:'🇵🇭',p:{'Manila':[14.60,120.98]}},
+    MY:{n:'Malasia',f:'🇲🇾',p:{'Kuala Lumpur':[3.14,101.69]}},
+    SG:{n:'Singapur',f:'🇸🇬',p:{'Singapur':[1.35,103.82]}},
+    PK:{n:'Pakistán',f:'🇵🇰',p:{'Islamabad':[33.69,73.05]}},
+    MA:{n:'Marruecos',f:'🇲🇦',p:{'Casablanca':[33.57,-7.59],'Marrakech':[31.63,-8.01]}},
+    ZA:{n:'Sudáfrica',f:'🇿🇦',p:{'Johannesburgo':[-26.20,28.05],'Ciudad del Cabo':[-33.92,18.42]}},
+    NG:{n:'Nigeria',f:'🇳🇬',p:{'Lagos':[6.52,3.38]}},
+    KE:{n:'Kenia',f:'🇰🇪',p:{'Nairobi':[-1.29,36.82]}},
+    AU:{n:'Australia',f:'🇦🇺',p:{'Sídney':[-33.87,151.21],'Melbourne':[-37.81,144.96]}},
+    NZ:{n:'Nueva Zelanda',f:'🇳🇿',p:{'Auckland':[-36.85,174.76]}}
+};
+const COUNTRY_KEYS = Object.keys(DB);
+
+const TEX_URLS = {
+    day: 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg',
+    night: 'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg',
+    clouds: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_1024.png'
+};
+
+function useEarthTextures() {
+    const [state, setState] = useState({ ready: false, day: null, night: null, clouds: null });
+    useEffect(() => {
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        const result = { day: null, night: null, clouds: null };
+        let pending = 3;
+        let settled = false;
+        const settle = () => { if (!settled) { settled = true; setState({ ready: true, ...result }); } };
+        const done = () => { pending--; if (pending <= 0) settle(); };
+        loader.load(TEX_URLS.day, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; result.day = t; done(); }, undefined, () => { done(); });
+        loader.load(TEX_URLS.night, (t) => { t.colorSpace = THREE.SRGBColorSpace; result.night = t; done(); }, undefined, () => { done(); });
+        loader.load(TEX_URLS.clouds, (t) => { result.clouds = t; done(); }, undefined, () => { done(); });
+        const timeout = setTimeout(settle, 9000);
+        return () => { settled = true; clearTimeout(timeout); };
+    }, []);
+    return state;
+}
+
+const toVec3 = (lat, lng, r = 2.02) => {
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (lng + 180) * Math.PI / 180;
+    return new THREE.Vector3(-(r * Math.sin(phi) * Math.cos(theta)), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+};
+
+const SUN_DIR = new THREE.Vector3(5, 3, 5).normalize();
+
+let idSeq = 0;
+const newVisitor = () => {
+    const ck = COUNTRY_KEYS[(Math.random() * COUNTRY_KEYS.length) | 0];
+    const c = DB[ck];
+    const pks = Object.keys(c.p);
+    const pk = pks[(Math.random() * pks.length) | 0];
+    const [lat, lng] = c.p[pk];
+    return { id: ++idSeq, ts: Date.now(), ck, cn: c.n, fl: c.f, pv: pk, lat, lng };
+};
+
+const PulseWave = memo(({ lat, lng, color }) => {
+    const ref = useRef();
+    const pos = useMemo(() => toVec3(lat, lng, 2.03), [lat, lng]);
+    const quat = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize()), [pos]);
+    useFrame(({ clock }) => {
+        const t = (clock.getElapsedTime() % 1.6) / 1.6;
+        if (ref.current) {
+            ref.current.scale.setScalar(0.6 + t * 3);
+            ref.current.material.opacity = (1 - t) * 0.55;
+        }
+    });
+    return (
+        <group position={pos} quaternion={quat}>
+            <mesh ref={ref} rotation={[-Math.PI/2, 0, 0]}>
+                <ringGeometry args={[0.03, 0.036, 32]} />
+                <meshBasicMaterial color={color} transparent opacity={0.5} side={THREE.DoubleSide} depthWrite={false} />
+            </mesh>
+        </group>
+    );
+});
+
+const Marker = memo(({ lat, lng, user }) => {
+    const pos = useMemo(() => toVec3(lat, lng), [lat, lng]);
+    const quat = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), pos.clone().normalize()), [pos]);
+    const color = user ? '#00ff41' : '#38bdf8';
+    const s = user ? 0.045 : 0.022;
+    return (
+        <group position={pos} quaternion={quat}>
+            <mesh position={[0, s * 1.8, 0]}>
+                <cylinderGeometry args={[0.0012, 0.0012, s * 3.6, 4]} />
+                <meshBasicMaterial color={color} transparent opacity={0.7} />
+            </mesh>
+            <mesh position={[0, s * 3.6, 0]}>
+                <sphereGeometry args={[s, 10, 10]} />
+                <meshStandardMaterial emissive={color} emissiveIntensity={user ? 5 : 2.5} color={color} toneMapped={false} />
+            </mesh>
+            <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0.002, 0]}>
+                <ringGeometry args={[s * 0.6, s * 1.1, 14]} />
+                <meshBasicMaterial color={color} transparent opacity={0.5} side={THREE.DoubleSide} />
+            </mesh>
+        </group>
+    );
+}, (a, b) => a.lat === b.lat && a.lng === b.lng && a.user === b.user);
+
+const Atmosphere = memo(() => (
+    <>
+        <mesh scale={[1.045, 1.045, 1.045]}>
+            <sphereGeometry args={[2, 48, 48]} />
+            <shaderMaterial
+                vertexShader={`varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`}
+                fragmentShader={`varying vec3 vN; void main(){ float i = pow(0.62 - dot(vN, vec3(0,0,1.0)), 3.0); gl_FragColor = vec4(0.35,0.65,1.0,1.0) * i; }`}
+                blending={THREE.AdditiveBlending} side={THREE.BackSide} transparent
+            />
+        </mesh>
+        <mesh scale={[1.12, 1.12, 1.12]}>
+            <sphereGeometry args={[2, 48, 48]} />
+            <shaderMaterial
+                vertexShader={`varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`}
+                fragmentShader={`varying vec3 vN; void main(){ float i = pow(0.5 - dot(vN, vec3(0,0,1.0)), 4.0); gl_FragColor = vec4(0.2,0.5,1.0,1.0) * i * 0.6; }`}
+                blending={THREE.AdditiveBlending} side={THREE.BackSide} transparent depthWrite={false}
+            />
+        </mesh>
+    </>
+));
+
+function useEarthMaterial(tex) {
+    return useMemo(() => {
+        if (!tex.day) return null;
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                dayTex: { value: tex.day },
+                nightTex: { value: tex.night },
+                sunDirection: { value: SUN_DIR.clone() },
+                hasNight: { value: tex.night ? 1.0 : 0.0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                void main() {
+                    vUv = uv;
+                    vNormal = normalize(mat3(modelMatrix) * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D dayTex;
+                uniform sampler2D nightTex;
+                uniform vec3 sunDirection;
+                uniform float hasNight;
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                void main() {
+                    vec3 normal = normalize(vNormal);
+                    vec3 dayColor = texture2D(dayTex, vUv).rgb;
+                    float sunDot = dot(normal, normalize(sunDirection));
+                    float dayFactor = smoothstep(-0.12, 0.28, sunDot);
+                    vec3 color;
+                    if (hasNight > 0.5) {
+                        vec3 nightColor = texture2D(nightTex, vUv).rgb * 1.9;
+                        color = mix(nightColor, dayColor, dayFactor);
+                    } else {
+                        color = dayColor * (0.18 + 0.82 * dayFactor);
+                    }
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `
+        });
+    }, [tex.day, tex.night]);
+}
+
+const Earth = memo(({ visitors, userLoc, tex }) => {
+    const groupRef = useRef();
+    const cloudsRef = useRef();
+    const earthMat = useEarthMaterial(tex);
+
+    useFrame((_, delta) => {
+        if (groupRef.current) groupRef.current.rotation.y += delta * 0.03;
+        if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.045;
+    });
+
+    const recentVisitors = visitors.slice(0, 4);
+
+    return (
+        <>
+            <group ref={groupRef}>
+                {earthMat ? (
+                    <mesh material={earthMat}><sphereGeometry args={[2, 96, 96]} /></mesh>
+                ) : (
+                    <mesh><sphereGeometry args={[2, 64, 64]} /><meshPhongMaterial color="#1a4d8f" emissive="#001133" specular="#222" shininess={15} /></mesh>
+                )}
+                {visitors.map(v => <Marker key={v.id} lat={v.lat} lng={v.lng} user={false} />)}
+                {userLoc && <Marker lat={userLoc.lat} lng={userLoc.lng} user={true} />}
+                {userLoc && <PulseWave lat={userLoc.lat} lng={userLoc.lng} color="#00ff41" />}
+                {recentVisitors.map(v => <PulseWave key={'p'+v.id} lat={v.lat} lng={v.lng} color="#38bdf8" />)}
+            </group>
+            {tex.clouds && (
+                <mesh ref={cloudsRef} scale={[1.012, 1.012, 1.012]}>
+                    <sphereGeometry args={[2, 48, 48]} />
+                    <meshPhongMaterial map={tex.clouds} transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
+                </mesh>
+            )}
+            <Atmosphere />
+            <Stars radius={80} depth={40} count={3000} factor={3.5} saturation={0} fade speed={0.8} />
+        </>
+    );
+});
+
+const Loading3D = () => (
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black pointer-events-none">
+        <div className="flex flex-col items-center gap-4">
+            <div className="loader-ring"></div>
+            <span className="text-blue-400 text-xs font-medium tracking-[0.3em] uppercase">Cargando Planeta</span>
+        </div>
+    </div>
+);
+
+const AnimatedNumber = memo(({ value }) => {
+    const [display, setDisplay] = useState(value);
+    const prev = useRef(value);
+    useEffect(() => {
+        const start = prev.current;
+        const end = value;
+        if (start === end) return;
+        const duration = 700;
+        const startTime = performance.now();
+        let raf;
+        const step = (now) => {
+            const t = Math.min((now - startTime) / duration, 1);
+            const eased = 1 - Math.pow(1 - t, 3);
+            setDisplay(Math.round(start + (end - start) * eased));
+            if (t < 1) raf = requestAnimationFrame(step);
+            else prev.current = end;
+        };
+        raf = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(raf);
+    }, [value]);
+    return <span className="tabular-nums">{display.toLocaleString('es')}</span>;
+});
+
+const Stat = memo(({ label, value, Icon, accent }) => (
+    <div className="flex-1 flex flex-col items-center py-2 px-2 border-r border-white/5 last:border-0">
+        <div className={`flex items-center gap-1 mb-0.5 ${accent || 'text-blue-400'}`}>
+            <Icon size={10} strokeWidth={2.5}/>
+            <span className="text-[8px] font-bold uppercase tracking-widest">{label}</span>
+        </div>
+        <span className="text-base font-bold text-white leading-tight"><AnimatedNumber value={value} /></span>
+    </div>
+));
+
+const ProvincePopup = ({ data, counts, onClose }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 15, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 15, scale: 0.9 }}
+        transition={{ duration: 0.2 }}
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50"
+    >
+        <div className="glass rounded-xl w-56 overflow-hidden shadow-2xl">
+            <div className="px-3 py-2 flex justify-between items-center border-b border-white/10 bg-slate-800/40">
+                <div className="flex items-center gap-2">
+                    <span className="text-xl">{data.f}</span>
+                    <span className="text-xs font-bold text-white">{data.n}</span>
+                </div>
+                <button onClick={onClose} className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-white/10 transition-colors"><X size={12}/></button>
+            </div>
+            <div className="p-2 max-h-40 overflow-y-auto scroll-thin space-y-1">
+                {Object.keys(data.p).map(pv => {
+                    const c = counts[pv] || 0;
+                    if (!c) return null;
+                    return (
+                        <div key={pv} className="flex justify-between items-center px-2 py-1.5 rounded-lg bg-white/[.04] text-[10px]">
+                            <span className="text-slate-200 truncate mr-2 font-medium">{pv}</span>
+                            <span className="font-mono font-bold text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded">{c}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    </motion.div>
+);
+
+const NationsPopover = ({ cCounts, onClose, onNationClick }) => {
+    const allNations = useMemo(() => 
+        COUNTRY_KEYS.map(code => ({ code, ...DB[code], count: cCounts[code] || 0 })).sort((a, b) => b.count - a.count),
+    [cCounts]);
+    const activeNations = allNations.filter(n => n.count > 0).length;
+
+    return (
+        <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 z-50">
+            <motion.div
+                initial={{ opacity: 0, x: 15, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 15, scale: 0.9 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                style={{ transformOrigin: 'right center' }}
+                className="glass rounded-xl w-80 max-w-[85vw] overflow-hidden shadow-2xl relative"
+            >
+                <div className="popover-arrow"></div>
+                <div className="px-3 py-2.5 flex justify-between items-center border-b border-white/10 bg-gradient-to-r from-blue-900/40 to-cyan-900/40">
+                    <div className="flex items-center gap-2">
+                        <Globe2 size={15} className="text-blue-400"/>
+                        <span className="text-xs font-bold text-white tracking-wide">NACIONES</span>
+                        <span className="text-[9px] font-mono text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-500/30">{activeNations}/{allNations.length}</span>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={13}/></button>
+                </div>
+                <div className="p-2.5 max-h-[60vh] overflow-y-auto scroll-thin">
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {allNations.map(nation => (
+                            <motion.button
+                                key={nation.code}
+                                whileHover={{ scale: 1.04 }}
+                                whileTap={{ scale: 0.96 }}
+                                onClick={() => onNationClick(nation.code)}
+                                className={`flex items-center gap-2 px-2 py-2 rounded-lg transition-all text-left ${nation.count > 0 ? 'bg-blue-500/10 hover:bg-blue-500/25 border border-blue-500/25' : 'bg-white/[.02] hover:bg-white/[.06] border border-transparent opacity-50'}`}
+                            >
+                                <span className="text-2xl drop-shadow-md select-none shrink-0">{nation.f}</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-bold text-white truncate leading-tight">{nation.n}</p>
+                                    <p className="text-[9px] font-mono text-cyan-300 leading-tight">{nation.count.toLocaleString('es')}</p>
+                                </div>
+                            </motion.button>
+                        ))}
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+// ─── Utilidades de fecha para claves de contador ────────────────────────────
+const getWeekNum = (d) => {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const day = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+};
+
+// ─── Registro de visita real con CountAPI ───────────────────────────────────
+// Namespace único para este sitio — no compartido con otros proyectos
+const SITE_NS = 'hits20radio-portal';
+
+async function registrarVisitaReal(setStats) {
+    const now = new Date();
+    const todayKey  = now.toISOString().split('T')[0];                        // 2026-08-27
+    const weekKey   = `${now.getFullYear()}-W${String(getWeekNum(now)).padStart(2,'0')}`; // 2026-W35
+    const monthKey  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; // 2026-08
+    const totalKey  = 'total';
+
+    const BASE = 'https://api.countapi.xyz/hit';
+
+    // Carga desde localStorage como valores iniciales mientras llega la API
+    const cached = JSON.parse(localStorage.getItem(`${SITE_NS}_stats`) || 'null');
+    if (cached) setStats(cached);
+
+    try {
+        const [dayR, weekR, monthR, totalR] = await Promise.all([
+            fetch(`${BASE}/${SITE_NS}/${todayKey}`).then(r => r.json()),
+            fetch(`${BASE}/${SITE_NS}/${weekKey}`).then(r => r.json()),
+            fetch(`${BASE}/${SITE_NS}/${monthKey}`).then(r => r.json()),
+            fetch(`${BASE}/${SITE_NS}/${totalKey}`).then(r => r.json()),
+        ]);
+        const real = {
+            day:   dayR.value   || 0,
+            week:  weekR.value  || 0,
+            month: monthR.value || 0,
+            total: totalR.value || 0,
+        };
+        setStats(real);
+        localStorage.setItem(`${SITE_NS}_stats`, JSON.stringify(real));
+    } catch (err) {
+        // CountAPI no disponible → usar caché local o valores neutros
+        if (!cached) setStats({ day: 0, week: 0, month: 0, total: 0 });
+        console.warn('[GlobalNet] CountAPI no disponible, usando caché local.');
+    }
+}
+
+function App() {
+    const [visitors, setVisitors] = useState([]);
+    const [userLoc, setUserLoc] = useState(null);
+    const [stats, setStats] = useState({ day: 0, week: 0, month: 0, total: 0 });
+    const [cCounts, setCCounts] = useState({});
+    const [pCounts, setPCounts] = useState({});
+    const [selected, setSelected] = useState(null);
+    const [showNations, setShowNations] = useState(false);
+    const controlsRef = useRef();
+    const tex = useEarthTextures();
+
+    useEffect(() => {
+        // Visualización animada del globo (marcadores decorativos)
+        const me = newVisitor();
+        setUserLoc(me);
+        const hist = Array.from({ length: 45 }, newVisitor);
+        setVisitors(hist);
+        const cc = {}, pp = {};
+        [...hist, me].forEach(v => { cc[v.ck] = (cc[v.ck] || 0) + 1; pp[v.pv] = (pp[v.pv] || 0) + 1; });
+        setCCounts(cc);
+        setPCounts(pp);
+
+        // Animación de marcadores en el globo (solo visual, no afecta los contadores)
+        const iv = setInterval(() => {
+            const nv = newVisitor();
+            setVisitors(prev => [nv, ...prev].slice(0, 80));
+            setCCounts(prev => ({ ...prev, [nv.ck]: (prev[nv.ck] || 0) + 1 }));
+            setPCounts(prev => ({ ...prev, [nv.pv]: (prev[nv.pv] || 0) + 1 }));
+        }, 1800);
+
+        // Contadores REALES: registrar visita y obtener datos de CountAPI
+        registrarVisitaReal(setStats);
+
+        return () => clearInterval(iv);
+    }, []);
+
+    const handleNationClick = useCallback(code => setSelected(code), []);
+    const handleCloseProvince = useCallback(() => setSelected(null), []);
+    const toggleNations = useCallback(() => { setShowNations(p => !p); setSelected(null); }, []);
+    const closeNations = useCallback(() => setShowNations(false), []);
+
+    const zoomIn = useCallback(() => {
+        if (controlsRef.current) {
+            const camera = controlsRef.current.object;
+            const dist = camera.position.length();
+            camera.position.normalize().multiplyScalar(Math.max(3, dist * 0.8));
+            controlsRef.current.update();
+        }
+    }, []);
+    
+    const zoomOut = useCallback(() => {
+        if (controlsRef.current) {
+            const camera = controlsRef.current.object;
+            const dist = camera.position.length();
+            camera.position.normalize().multiplyScalar(Math.min(12, dist * 1.25));
+            controlsRef.current.update();
+        }
+    }, []);
+
+    return (
+        <div className="relative w-full h-screen bg-black">
+            <div className="absolute inset-0 z-0">
+                <Canvas camera={{ position: [0, 0.3, 5.2], fov: 45 }} dpr={[1, 2]} gl={{ antialias: true, powerPreference: 'high-performance' }}>
+                    <ambientLight intensity={0.15} />
+                    <directionalLight position={[5, 3, 5]} intensity={2.2} color="#ffffff" />
+                    <pointLight position={[-8, -4, -6]} intensity={0.6} color="#3b82f6" />
+                    <Earth visitors={visitors} userLoc={userLoc} tex={tex} />
+                    <OrbitControls ref={controlsRef} enableZoom={true} enablePan={false} minDistance={2.8} maxDistance={12} zoomSpeed={0.6} rotateSpeed={0.5} minPolarAngle={Math.PI / 4} maxPolarAngle={Math.PI / 1.6} />
+                </Canvas>
+            </div>
+            {!tex.ready && <Loading3D />}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col items-end gap-1.5">
+                <button onClick={zoomIn} className="glass w-8 h-8 rounded-lg flex items-center justify-center text-blue-400 hover:text-white hover:bg-blue-500/20 transition-all active:scale-90" title="Acercar"><ZoomIn size={14}/></button>
+                <button onClick={zoomOut} className="glass w-8 h-8 rounded-lg flex items-center justify-center text-blue-400 hover:text-white hover:bg-blue-500/20 transition-all active:scale-90" title="Alejar"><ZoomOut size={14}/></button>
+                <div className="w-8 h-px bg-white/15 my-1"></div>
+                <div className="relative">
+                    <button onClick={toggleNations} className={`btn-nations w-8 h-auto py-1.5 rounded-lg flex flex-col items-center justify-center gap-0.5 ${showNations ? 'active' : ''}`} title="Ver todas las naciones">
+                        <Globe2 size={13} className="text-blue-200"/>
+                        <span className="text-[6px] font-bold text-white tracking-wider leading-none text-center">NACIONES</span>
+                    </button>
+                    <AnimatePresence>
+                        {showNations && (<NationsPopover cCounts={cCounts} onClose={closeNations} onNationClick={handleNationClick} />)}
+                    </AnimatePresence>
+                </div>
+            </div>
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                <div className="glass rounded-full px-4 py-1.5 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+                    <span className="text-[10px] font-bold text-emerald-300 tracking-[0.2em] uppercase">Monitoreo en vivo</span>
+                </div>
+            </motion.div>
+            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 100 }} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                <div className="glass rounded-2xl px-2 py-1 flex items-stretch">
+                    <Stat label="Hoy" value={stats.day} Icon={Clock} />
+                    <Stat label="Semana" value={stats.week} Icon={Calendar} />
+                    <Stat label="Mes" value={stats.month} Icon={TrendingUp} />
+                    <Stat label="Total" value={stats.total} Icon={Users} accent="text-emerald-400" />
+                </div>
+            </motion.div>
+            <AnimatePresence>
+                {selected && DB[selected] && (<ProvincePopup data={DB[selected]} counts={pCounts} onClose={handleCloseProvince} />)}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
 </script>
 </body>
 </html>
