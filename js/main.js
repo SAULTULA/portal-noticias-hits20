@@ -1,7 +1,7 @@
 // URLs de ejecutables de Google Apps Script
 const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuKcm3VoIeUyc4FJGG962DkdMf2MYQYSkhBzji40oRmH1p/exec";
 // URL corregida de Minuto 1 (sin caracteres extra al final)
-const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbySMz7KUr-PtZzk6fMTfvJqY1dQZk_c87qblUgbOPqOfJcNznb_3Czls-EDkH3hfn5B1g/exec";
+const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbxs3faetjE3Lykcbu1L0Idvunvol-5-UMGbSIFkDJOgmjlPf45HUN73sLvypAKXe1-Zfg/exec";
 
 // Feed RSS de Facebook
 const urlRssFacebook = "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml";

@@ -1,4 +1,4 @@
-const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbySMz7KUr-PtZzk6fMTfvJqY1dQZk_c87qblUgbOPqOfJcNznb_3Czls-EDkH3hfn5B1g/exec";
+const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbxs3faetjE3Lykcbu1L0Idvunvol-5-UMGbSIFkDJOgmjlPf45HUN73sLvypAKXe1-Zfg/exec";
 
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "radio2026";
