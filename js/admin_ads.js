@@ -106,15 +106,18 @@ function eliminarPublicidad(titulo) {
         titulo: titulo // Apps Script buscará por este título
     };
 
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(datos));
+
     fetch(urlAppsScriptMinutoUno, {
         method: 'POST',
-        body: JSON.stringify(datos)
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
         if (data.resultado === "success") {
             alert("Publicidad eliminada con éxito.");
-            cargarPublicidades(); // Recargar lista
+            cargarPublicidades();
         } else {
             alert("Error al eliminar: " + (data.mensaje || ""));
             btnMsg.style.display = "none";
@@ -149,9 +152,12 @@ function guardarPublicidad(e) {
         url: document.getElementById('ad-url').value
     };
 
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(datos));
+
     fetch(urlAppsScriptMinutoUno, {
         method: 'POST',
-        body: JSON.stringify(datos)
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
