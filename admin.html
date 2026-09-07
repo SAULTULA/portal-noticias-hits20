@@ -1,8 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Panel de administración de noticias para Hits 20 Radio.">
+    <meta name="robots" content="noindex, nofollow">
     <title>Panel de Administración - Hits 20 Radio</title>
     <link rel="stylesheet" href="css/styles.css">
 
@@ -63,8 +65,9 @@
             </div>
 
             <div style="display: flex; gap: 10px;">
+                <!-- SEC-013: sin onclick inline -->
                 <button type="submit" id="btn-guardar" style="background: #e63946; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; flex: 1;">Publicar Noticia</button>
-                <button type="button" id="btn-cancelar-edicion" onclick="limpiarFormulario()" style="background: #7f8c8d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; display: none;">Cancelar Edición</button>
+                <button type="button" id="btn-cancelar-edicion" style="background: #7f8c8d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; display: none;">Cancelar Edición</button>
             </div>
         </form>
 
@@ -74,7 +77,8 @@
             <p style="font-size: 0.9rem; margin-bottom: 8px;">Copia este enlace para compartir en Facebook, WhatsApp u otras redes:</p>
             <div style="display: flex; gap: 10px;">
                 <input type="text" id="input-link-compartir" readonly style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 0.85rem;">
-                <button type="button" onclick="copiarLinkNoticia()" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Copiar Link</button>
+                <!-- SEC-013: sin onclick inline, el id permite al JS encontrarlo -->
+                <button type="button" id="btn-copiar-link" style="background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">Copiar Link</button>
             </div>
             <span id="copiado-aviso" style="color: #27ae60; font-size: 0.8rem; display: none; margin-top: 5px;">¡Enlace copiado al portapapeles!</span>
         </div>
@@ -97,11 +101,12 @@
         
         <div style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center;">
             <a href="index.html" style="color: #1a1a1a; text-decoration: none; font-size: 0.9rem; font-weight: bold;">← Volver al Portal</a>
-            <a href="#" onclick="sessionStorage.clear(); window.location.href='login.html';" style="color: #e63946; text-decoration: none; font-size: 0.9rem; font-weight: bold;">Cerrar Sesión</a>
+            <!-- SEC-013: sin onclick inline, el id permite al JS encontrarlo -->
+            <a href="#" id="btn-cerrar-sesion" style="color: #e63946; text-decoration: none; font-size: 0.9rem; font-weight: bold;">Cerrar Sesión</a>
         </div>
     </div>
 
     <!-- Vinculado a tu script de administración -->
-    <script src="js/admin.js"></script>
+    <script src="js/admin.js" defer></script>
 </body>
 </html>

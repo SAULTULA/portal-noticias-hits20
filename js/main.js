@@ -1,7 +1,7 @@
 // URLs de ejecutables de Google Apps Script
 const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuKcm3VoIeUyc4FJGG962DkdMf2MYQYSkhBzji40oRmH1p/exec";
 // URL corregida de Minuto 1 (sin caracteres extra al final)
-const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbzR7SwIz2RhDD5XS9Cu15qMz7jvimJBIIQ-VBG3kcIOlInJlDxw2T-jpnpkC65kAAng/exec";
+const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbySMz7KUr-PtZzk6fMTfvJqY1dQZk_c87qblUgbOPqOfJcNznb_3Czls-EDkH3hfn5B1g/exec";
 
 // Feed RSS de Facebook
 const urlRssFacebook = "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml";
@@ -13,9 +13,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // 1. Carga de Noticias de Apps Script (Provinciales, Nacionales, Internacionales)
     cargarNoticiasAppsScript();
 
-    // 2. Carga de Facebook y Minuto 1
-    cargarNoticiasFacebook();
-    cargarNoticiasMinutoUno();
+    // 2. Carga de Minuto 1, Facebook y Publicidades
+    cargarDatosSecundarios();
 
     // 3. Reproductor
     const audio = document.getElementById('audio-stream');
@@ -24,6 +23,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     inicializarArrastrePlayer();
+    
+    // 4. Modal de Admin Ads
+    inicializarAdminAds();
 });
 
 // -------------------------------------------------------------
@@ -59,14 +61,15 @@ function renderizarNoticiasAppsScript(listaParaPintar) {
     const ahora = new Date();
     // Ajustado exactamente a 72 horas (72h * 60m * 60s * 1000ms)
     const limite72Horas = 72 * 60 * 60 * 1000;
-    const terminoBusqueda = document.getElementById('searchInput') ? document.getElementById('searchInput').value.trim() : '';
+    const searchInputEl = document.getElementById('searchInput');
+    const terminoBusqueda = searchInputEl ? searchInputEl.value.trim() : '';
 
-    let listaOrdenada = [...listaParaPintar].sort((a, b) => {
-        let fechaA = new Date(a.fecha || a.Fecha).getTime() || 0;
-        let fechaB = new Date(b.fecha || b.Fecha).getTime() || 0;
+    const listaOrdenada = [...listaParaPintar].sort((a, b) => {
+        const fechaA = new Date(a.fecha || a.Fecha).getTime() || 0;
+        const fechaB = new Date(b.fecha || b.Fecha).getTime() || 0;
         if (fechaB !== fechaA) return fechaB - fechaA;
-        let horaA = a.hora || a.Hora || "00:00";
-        let horaB = b.hora || b.Hora || "00:00";
+        const horaA = a.hora || a.Hora || "00:00";
+        const horaB = b.hora || b.Hora || "00:00";
         return horaB.localeCompare(horaA);
     });
 
@@ -79,31 +82,52 @@ function renderizarNoticiasAppsScript(listaParaPintar) {
         else if (categoria.includes('provincial')) contenedor = provinciales;
 
         if (contenedor) {
-            let fechaCruda = noticia.fecha || noticia.Fecha;
-            let fechaNoticia = new Date(fechaCruda || 0);
+            const fechaCruda = noticia.fecha || noticia.Fecha;
+            const fechaNoticia = new Date(fechaCruda || 0);
             
             // Si tiene más de 72 horas y no hay búsqueda activa, se descarta
-            let esMasDe72Horas = (ahora.getTime() - fechaNoticia.getTime()) > limite72Horas;
+            const esMasDe72Horas = (ahora.getTime() - fechaNoticia.getTime()) > limite72Horas;
             if (esMasDe72Horas && !terminoBusqueda) return;
 
             const card = document.createElement('article');
             card.className = 'card-noticia';
             card.style.cursor = 'pointer';
 
-            let fechaTexto = formatearFechaYHora(fechaCruda, noticia.hora || noticia.Hora);
-            let contenidoMultimediaHtml = obtenerHtmlMultimedia(noticia.video || noticia.Video, noticia.imagen || noticia.Imagen);
+            const fechaTexto = formatearFechaYHora(fechaCruda, noticia.hora || noticia.Hora);
 
-            card.innerHTML = `
-                <div class="card-image-box" style="width: 100%; height: 160px; overflow: hidden; background: #000;">
-                    ${contenidoMultimediaHtml}
-                </div>
-                <div class="card-body" style="padding: 12px;">
-                    <span class="badge" style="background: #d9534f; color: #fff;">${noticia.categoria || 'Noticia'}</span>
-                    <div style="font-size: 0.75rem; color: #777; margin-top: 4px;">${fechaTexto}</div>
-                    <h3 style="font-weight: 600; font-size: 0.9rem; margin-top: 6px;">${noticia.titulo || 'Sin título'}</h3>
-                    <p style="font-size: 0.8rem; color: #555; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${noticia.descripcion || ''}</p>
-                </div>
-            `;
+            // SEC-003: construir la tarjeta via DOM, sin innerHTML con datos externos
+            const imageBox = document.createElement('div');
+            imageBox.className = 'card-image-box';
+            imageBox.style.cssText = 'width: 100%; height: 160px; overflow: hidden; background: #000;';
+            agregarMultimediaDOM(imageBox, noticia.video || noticia.Video, noticia.imagen || noticia.Imagen);
+
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+            cardBody.style.padding = '12px';
+
+            const badge = document.createElement('span');
+            badge.className = 'badge';
+            badge.style.cssText = 'background: #d9534f; color: #fff;';
+            badge.textContent = noticia.categoria || 'Noticia';
+
+            const fechaDiv = document.createElement('div');
+            fechaDiv.style.cssText = 'font-size: 0.75rem; color: #777; margin-top: 4px;';
+            fechaDiv.textContent = fechaTexto;
+
+            const titulo = document.createElement('h3');
+            titulo.style.cssText = 'font-weight: 600; font-size: 0.9rem; margin-top: 6px;';
+            titulo.textContent = noticia.titulo || 'Sin título';
+
+            const desc = document.createElement('p');
+            desc.style.cssText = 'font-size: 0.8rem; color: #555; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;';
+            desc.textContent = noticia.descripcion || '';
+
+            cardBody.appendChild(badge);
+            cardBody.appendChild(fechaDiv);
+            cardBody.appendChild(titulo);
+            cardBody.appendChild(desc);
+            card.appendChild(imageBox);
+            card.appendChild(cardBody);
 
             card.addEventListener('click', () => abrirNoticiaModal(noticia));
             contenedor.appendChild(card);
@@ -111,19 +135,63 @@ function renderizarNoticiasAppsScript(listaParaPintar) {
     });
 }
 
+/**
+ * SEC-003: Agrega contenido multimedia al contenedor via DOM seguro (sin innerHTML con datos externos).
+ */
+function agregarMultimediaDOM(contenedor, urlVideo, urlImagen) {
+    contenedor.textContent = '';
+    if (urlVideo && urlVideo.trim() !== "") {
+        const videoUrl = urlVideo.trim();
+        let videoId = null;
+
+        if (videoUrl.includes("youtube.com/watch?v=")) {
+            videoId = videoUrl.split("v=")[1]?.split("&")[0];
+        } else if (videoUrl.includes("youtu.be/")) {
+            videoId = videoUrl.split("youtu.be/")[1]?.split("?")[0];
+        }
+
+        if (videoId) {
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(videoId)}`;
+            iframe.style.cssText = 'width: 100%; height: 100%; border: none;';
+            iframe.allowFullscreen = true;
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+            contenedor.appendChild(iframe);
+        } else {
+            const video = document.createElement('video');
+            video.src = videoUrl;
+            video.controls = true;
+            video.style.cssText = 'width: 100%; height: 100%; object-fit: cover; background: #000;';
+            contenedor.appendChild(video);
+        }
+    } else {
+        const img = document.createElement('img');
+        img.src = urlImagen || imgFallback;
+        img.alt = 'Imagen noticia';
+        img.loading = 'lazy';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
+        img.addEventListener('error', function () { this.src = imgFallback; });
+        contenedor.appendChild(img);
+    }
+}
+
+/**
+ * Versión legacy de obtenerHtmlMultimedia – mantenida para compatibilidad interna.
+ * Solo se usa para iframes de YouTube cuyos IDs son generados internamente (seguros).
+ */
 function obtenerHtmlMultimedia(urlVideo, urlImagen) {
     if (urlVideo && urlVideo.trim() !== "") {
-        let videoUrl = urlVideo.trim();
+        const videoUrl = urlVideo.trim();
         if (videoUrl.includes("youtube.com/watch?v=")) {
-            let videoId = videoUrl.split("v=")[1]?.split("&")[0];
-            if (videoId) return `<iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>`;
+            const videoId = videoUrl.split("v=")[1]?.split("&")[0];
+            if (videoId) return `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>`;
         } else if (videoUrl.includes("youtu.be/")) {
-            let videoId = videoUrl.split("youtu.be/")[1]?.split("?")[0];
-            if (videoId) return `<iframe src="https://www.youtube.com/embed/${videoId}" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>`;
+            const videoId = videoUrl.split("youtu.be/")[1]?.split("?")[0];
+            if (videoId) return `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(videoId)}" style="width: 100%; height: 100%; border: none;" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>`;
         }
-        return `<video src="${videoUrl}" controls style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>`;
+        return `<video src="${urlVideo}" controls style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>`;
     }
-    return `<img src="${urlImagen || imgFallback}" alt="Imagen noticia" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.src='${imgFallback}'">`;
+    return `<img src="${urlImagen || imgFallback}" alt="Imagen noticia" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;">`;
 }
 
 // -------------------------------------------------------------
@@ -140,17 +208,17 @@ function abrirNoticiaModal(noticia) {
     const btnExterno = document.getElementById('btn-modal-externo');
     if (btnExterno) btnExterno.style.display = 'none';
 
-    if (elCategoria) elCategoria.innerText = noticia.categoria || '';
-    if (elTitulo) elTitulo.innerText = noticia.titulo || '';
-    if (elCuerpo) elCuerpo.innerText = noticia.cuerpo || noticia.descripcion || '';
-    if (elFecha) elFecha.innerText = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
+    // SEC-003: usar textContent para datos externos
+    if (elCategoria) elCategoria.textContent = noticia.categoria || '';
+    if (elTitulo) elTitulo.textContent = noticia.titulo || '';
+    if (elCuerpo) elCuerpo.textContent = noticia.cuerpo || noticia.descripcion || '';
+    if (elFecha) elFecha.textContent = formatearFechaYHora(noticia.fecha || noticia.Fecha, noticia.hora || noticia.Hora);
 
     if (modalImagenElem) {
-        let parentModalImg = modalImagenElem.parentNode;
+        const parentModalImg = modalImagenElem.parentNode;
         let videoContainerModal = document.getElementById('modal-video-container');
 
         if (noticia.video && noticia.video.trim() !== "") {
-            let multimediaModalHtml = obtenerHtmlMultimedia(noticia.video, noticia.imagen);
             if (!videoContainerModal) {
                 videoContainerModal = document.createElement('div');
                 videoContainerModal.id = 'modal-video-container';
@@ -160,12 +228,13 @@ function abrirNoticiaModal(noticia) {
                 videoContainerModal.style.marginBottom = '15px';
                 parentModalImg.insertBefore(videoContainerModal, modalImagenElem);
             }
-            videoContainerModal.innerHTML = multimediaModalHtml;
+            // SEC-003: usar DOM seguro
+            agregarMultimediaDOM(videoContainerModal, noticia.video, noticia.imagen);
             modalImagenElem.style.display = 'none';
         } else {
             modalImagenElem.style.display = 'block';
             modalImagenElem.src = noticia.imagen || imgFallback;
-            if (videoContainerModal) videoContainerModal.innerHTML = '';
+            if (videoContainerModal) videoContainerModal.textContent = '';
         }
     }
 
@@ -185,123 +254,252 @@ function cerrarNoticia() {
 // -------------------------------------------------------------
 // 3. FACEBOOK Y MINUTO 1
 // -------------------------------------------------------------
-async function cargarNoticiasFacebook() {
-    const contenedor = document.getElementById('grid-facebook');
-    if (!contenedor) return;
-
-    try {
-        const response = await fetch(urlRssFacebook);
-        const strText = await response.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(strText, "text/xml");
-        const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 3);
-
-        contenedor.innerHTML = '';
-        if (items.length === 0) {
-            contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No hay publicaciones recientes de Facebook.</p>';
-            return;
-        }
-
-        items.forEach(item => {
-            const titulo = item.querySelector("title")?.textContent || "Publicación de Facebook";
-            const enlace = item.querySelector("link")?.textContent || "#";
-            const pubDate = item.querySelector("pubDate")?.textContent || "";
-            let imagenUrl = imgFallback;
-            const mediaContent = item.getElementsByTagName("media:content")[0] || item.getElementsByTagName("media:thumbnail")[0];
-
-            if (mediaContent && mediaContent.getAttribute("url")) {
-                imagenUrl = mediaContent.getAttribute("url");
-            } else {
-                const descripcion = item.querySelector("description")?.textContent || "";
-                const imgMatch = descripcion.match(/<img[^>]+src=["']([^"']+)["']/i);
-                if (imgMatch && imgMatch[1]) imagenUrl = imgMatch[1];
-            }
-
-            const card = document.createElement('article');
-            card.className = 'card-noticia';
-            card.innerHTML = `
-                <div class="card-image-box">
-                    <img src="${imagenUrl}" alt="${titulo}" onerror="this.src='${imgFallback}'">
-                </div>
-                <div class="card-body">
-                    <span class="badge" style="background: #1877f2; color: #fff;">Facebook</span>
-                    ${pubDate ? `<span style="font-size: 0.75rem; color: #777; display: block; margin-top: 5px;">${formatearFechaYHora(pubDate)}</span>` : ''}
-                    <h3>${titulo}</h3>
-                    <a href="${enlace}" target="_blank" rel="noopener noreferrer" class="btn-read-more" style="display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.85rem; font-weight: bold;">
-                        Ver en Facebook ↗
-                    </a>
-                </div>
-            `;
-            contenedor.appendChild(card);
-        });
-    } catch (err) {
-        console.error("Error al cargar publicaciones de Facebook:", err);
-        contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No se pudieron obtener las publicaciones de Facebook.</p>';
-    }
-}
-
-async function cargarNoticiasMinutoUno() {
-    const contenedor = document.getElementById('grid-minutouno');
-    if (!contenedor) return;
-
+async function cargarDatosSecundarios() {
     try {
         const response = await fetch(urlAppsScriptMinutoUno);
         const data = await response.json();
-        contenedor.innerHTML = '';
+        
+        // Si el backend es el antiguo, devuelve un array
+        if (Array.isArray(data)) {
+            renderizarMinutoUno(data);
+        } else {
+            // Backend nuevo: devuelve un objeto { noticias, facebook, publicidades }
+            if (data.noticias || data.minuto1) {
+                renderizarMinutoUno(data.noticias || data.minuto1);
+            }
+            if (data.facebook) {
+                renderizarFacebook(data.facebook);
+            }
+            if (data.publicidades) {
+                renderizarPublicidades(data.publicidades);
+            }
+        }
+    } catch (err) {
+        console.error("Error al cargar datos secundarios:", err);
+    }
+}
 
-        if (!data || data.length === 0) {
-            contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No hay noticias disponibles en este momento.</p>';
-            return;
+function renderizarMinutoUno(data) {
+    const contenedor = document.getElementById('grid-minutouno');
+    if (!contenedor) return;
+    contenedor.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        const msg = document.createElement('p');
+        msg.style.cssText = 'color: #666; font-size: 0.9rem;';
+        msg.textContent = 'No hay noticias disponibles en este momento.';
+        contenedor.appendChild(msg);
+        return;
+    }
+
+    // Filtrar y omitir encabezados si vienen mezclados
+    const noticiasFiltradas = data.filter(noticia => {
+        const tituloNoticia = (noticia.titulo || noticia.Noticia || '').toLowerCase().trim();
+        if (tituloNoticia === '' || tituloNoticia === 'noticia' || tituloNoticia === 'titulo') return false;
+        return !tituloNoticia.includes("minuto 1") && !tituloNoticia.includes("minuto uno");
+    }).slice(0, 6);
+
+    noticiasFiltradas.forEach(noticia => {
+        const card = document.createElement('article');
+        card.className = 'card-noticia';
+        card.style.cursor = 'pointer';
+
+        const titulo = noticia.titulo || noticia.Noticia || 'Sin título';
+        const imagen = noticia.imagen || noticia.Imagen || imgFallback;
+        const enlace = noticia.enlace || noticia.Enlace || '#';
+        const categoria = noticia.seccion || noticia.categoria || 'Minuto 1';
+        const cuerpoText = noticia.cuerpo || noticia.descripcion || noticia.Descripcion || '';
+
+        const imageBox = document.createElement('div');
+        imageBox.className = 'card-image-box';
+        const img = document.createElement('img');
+        img.src = imagen;
+        img.alt = titulo;
+        img.loading = 'lazy';
+        img.addEventListener('error', function () { this.src = imgFallback; });
+        imageBox.appendChild(img);
+
+        const cardBody = document.createElement('div');
+        cardBody.className = 'card-body';
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style.cssText = 'background: #d9534f; color: #fff;';
+        badge.textContent = categoria;
+
+        const h3 = document.createElement('h3');
+        h3.style.cssText = 'font-weight: 600; font-size: 0.9rem; margin-top: 6px;';
+        h3.textContent = titulo;
+
+        const link = document.createElement('a');
+        link.href = enlace;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'btn-read-more';
+        link.style.cssText = 'display: inline-block; margin-top: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold; color: #d9534f;';
+        link.textContent = 'Leer más ↗';
+        link.addEventListener('click', e => e.stopPropagation());
+
+        cardBody.appendChild(badge);
+        cardBody.appendChild(h3);
+        cardBody.appendChild(link);
+
+        card.appendChild(imageBox);
+        card.appendChild(cardBody);
+
+        card.addEventListener('click', () => {
+            abrirMinutoUnoModal({ categoria, titulo, imagen, cuerpo: cuerpoText, enlace });
+        });
+
+        contenedor.appendChild(card);
+    });
+}
+
+function renderizarFacebook(data) {
+    const contenedor = document.getElementById('grid-facebook');
+    if (!contenedor) return;
+    contenedor.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        const msg = document.createElement('p');
+        msg.style.cssText = 'color: #666; font-size: 0.9rem;';
+        msg.textContent = 'No hay publicaciones recientes de Facebook.';
+        contenedor.appendChild(msg);
+        return;
+    }
+
+    const items = data.slice(0, 3);
+    items.forEach(item => {
+        const titulo = item.titulo || item.Titulo || "Publicación de Facebook";
+        const enlace = item.enlace || item.Enlace || "#";
+        const pubDate = item.fecha || item.Fecha || "";
+        const imagenUrl = item.imagen || item.Imagen || imgFallback;
+
+        const card = document.createElement('article');
+        card.className = 'card-noticia';
+
+        const imageBox = document.createElement('div');
+        imageBox.className = 'card-image-box';
+        const img = document.createElement('img');
+        img.src = imagenUrl;
+        img.alt = titulo;
+        img.loading = 'lazy';
+        img.addEventListener('error', function () { this.src = imgFallback; });
+        imageBox.appendChild(img);
+
+        const cardBody = document.createElement('div');
+        cardBody.className = 'card-body';
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style.cssText = 'background: #1877f2; color: #fff;';
+        badge.textContent = 'Facebook';
+
+        const h3 = document.createElement('h3');
+        h3.textContent = titulo;
+
+        const link = document.createElement('a');
+        link.href = enlace;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'btn-read-more';
+        link.style.cssText = 'display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.85rem; font-weight: bold;';
+        link.textContent = 'Ver en Facebook ↗';
+
+        cardBody.appendChild(badge);
+        if (pubDate) {
+            const dateSpan = document.createElement('span');
+            dateSpan.style.cssText = 'font-size: 0.75rem; color: #777; display: block; margin-top: 5px;';
+            dateSpan.textContent = formatearFechaYHora(pubDate);
+            cardBody.appendChild(dateSpan);
+        }
+        cardBody.appendChild(h3);
+        cardBody.appendChild(link);
+
+        card.appendChild(imageBox);
+        card.appendChild(cardBody);
+        contenedor.appendChild(card);
+    });
+}
+
+function renderizarPublicidades(publicidades) {
+    const contenedor = document.getElementById('ads-container');
+    if (!contenedor) return;
+    contenedor.innerHTML = '';
+
+    if (!publicidades || publicidades.length === 0) {
+        const slot1 = document.createElement('div');
+        slot1.className = 'ad-slot';
+        slot1.innerHTML = '<p>Espacio Publicitario / Flyer 1</p>';
+        const slot2 = document.createElement('div');
+        slot2.className = 'ad-slot';
+        slot2.innerHTML = '<p>Espacio Publicitario / Flyer 2</p>';
+        contenedor.appendChild(slot1);
+        contenedor.appendChild(slot2);
+        return;
+    }
+
+    publicidades.forEach(pub => {
+        const adWrapper = document.createElement('div');
+        adWrapper.style.cssText = 'background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; text-align: center;';
+        
+        const img = document.createElement('img');
+        img.src = pub.imagen || pub.Imagen || imgFallback;
+        img.alt = pub.titulo || pub.Titulo || 'Publicidad';
+        img.style.cssText = 'width: 100%; border-radius: 6px; object-fit: contain; max-height: 250px;';
+        adWrapper.appendChild(img);
+        
+        const textWrapper = document.createElement('div');
+        textWrapper.style.marginTop = '10px';
+
+        const titulo = pub.titulo || pub.Titulo;
+        if (titulo) {
+            const h4 = document.createElement('h4');
+            h4.style.cssText = 'margin: 5px 0; color: #333; font-size: 1rem;';
+            h4.textContent = titulo;
+            textWrapper.appendChild(h4);
         }
 
-        // Se saltan las primeras 2 filas (índices 0 y 1 del Sheet)
-        // Y filtra cualquier item cuyo título contenga "minuto 1" o "minuto uno"
-        const noticiasFiltradas = data.slice(2).filter(noticia => {
-            const tituloNoticia = (noticia.titulo || noticia.Noticia || '').toLowerCase().trim();
-            return !tituloNoticia.includes("minuto 1") && !tituloNoticia.includes("minuto uno");
-        }).slice(0, 6);
+        const texto = pub.texto || pub.Texto;
+        if (texto) {
+            const p = document.createElement('p');
+            p.style.cssText = 'font-size: 0.85rem; color: #555; margin: 5px 0;';
+            p.textContent = texto;
+            textWrapper.appendChild(p);
+        }
 
-        noticiasFiltradas.forEach(noticia => {
-            const card = document.createElement('article');
-            card.className = 'card-noticia';
-            card.style.cursor = 'pointer';
+        const email = pub.email || pub.Email;
+        const telefono = pub.telefono || pub.Telefono;
+        if (telefono || email) {
+            const contactDiv = document.createElement('div');
+            contactDiv.style.cssText = 'font-size: 0.8rem; color: #777; margin-top: 5px;';
+            if (telefono) {
+                const telSpan = document.createElement('span');
+                telSpan.textContent = `📞 ${telefono} `;
+                contactDiv.appendChild(telSpan);
+            }
+            if (email) {
+                const emailSpan = document.createElement('span');
+                emailSpan.textContent = `✉️ ${email}`;
+                contactDiv.appendChild(emailSpan);
+            }
+            textWrapper.appendChild(contactDiv);
+        }
 
-            const titulo = noticia.titulo || noticia.Noticia || 'Sin título';
-            const imagen = noticia.imagen || noticia.Imagen || imgFallback;
-            const enlace = noticia.enlace || noticia.Enlace || '#';
-            const categoria = noticia.seccion || noticia.categoria || 'Minuto 1';
-            const cuerpoText = noticia.cuerpo || noticia.descripcion || noticia.Descripcion || '';
+        const url = pub.url || pub.Url;
+        if (url) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.cssText = 'display: inline-block; margin-top: 10px; padding: 5px 10px; background: #d9534f; color: #fff; text-decoration: none; border-radius: 4px; font-size: 0.85rem; font-weight: bold;';
+            link.textContent = 'Visitar Web';
+            textWrapper.appendChild(link);
+        }
 
-            card.innerHTML = `
-                <div class="card-image-box">
-                    <img src="${imagen}" alt="${titulo}" onerror="this.src='${imgFallback}'">
-                </div>
-                <div class="card-body">
-                    <span class="badge" style="background: #d9534f; color: #fff;">${categoria}</span>
-                    <h3 style="font-weight: 600; font-size: 0.9rem; margin-top: 6px;">${titulo}</h3>
-                    <a href="${enlace}" target="_blank" rel="noopener noreferrer" class="btn-read-more" onclick="event.stopPropagation();" style="display: inline-block; margin-top: 10px; text-decoration: none; font-size: 0.85rem; font-weight: bold; color: #d9534f;">
-                        Leer más ↗
-                    </a>
-                </div>
-            `;
-
-            // Al hacer clic en cualquier parte de la tarjeta o foto, abre la ventana emergente
-            card.addEventListener('click', () => {
-                abrirMinutoUnoModal({
-                    categoria: categoria,
-                    titulo: titulo,
-                    imagen: imagen,
-                    cuerpo: cuerpoText,
-                    enlace: enlace
-                });
-            });
-
-            contenedor.appendChild(card);
-        });
-    } catch (err) {
-        console.error("Error al cargar Noticias Minuto 1:", err);
-        contenedor.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No se pudieron obtener las noticias de Minuto 1.</p>';
-    }
+        adWrapper.appendChild(textWrapper);
+        contenedor.appendChild(adWrapper);
+    });
 }
 
 // Función para mostrar la noticia de Minuto 1 dentro del Modal Emergente
@@ -312,16 +510,17 @@ function abrirMinutoUnoModal(noticia) {
     const elFecha = document.getElementById('modal-fecha');
     const modalImagenElem = document.getElementById('modal-imagen');
 
-    if (elCategoria) elCategoria.innerText = noticia.categoria;
-    if (elTitulo) elTitulo.innerText = noticia.titulo;
-    if (elFecha) elFecha.innerText = '';
+    // SEC-003: usar textContent para datos externos
+    if (elCategoria) elCategoria.textContent = noticia.categoria;
+    if (elTitulo) elTitulo.textContent = noticia.titulo;
+    if (elFecha) elFecha.textContent = '';
     
     // Si existe el reproductor de video de otras notas, lo limpia
-    let videoContainerModal = document.getElementById('modal-video-container');
-    if (videoContainerModal) videoContainerModal.innerHTML = '';
+    const videoContainerModal = document.getElementById('modal-video-container');
+    if (videoContainerModal) videoContainerModal.textContent = '';
 
     if (elCuerpo) {
-        elCuerpo.innerText = noticia.cuerpo ? `${noticia.cuerpo}\n\n` : '';
+        elCuerpo.textContent = noticia.cuerpo ? `${noticia.cuerpo}\n\n` : '';
         
         // Creamos o actualizamos el botón para ir al portal original
         let btnExterno = document.getElementById('btn-modal-externo');
@@ -329,13 +528,14 @@ function abrirMinutoUnoModal(noticia) {
             btnExterno = document.createElement('a');
             btnExterno.id = 'btn-modal-externo';
             btnExterno.target = '_blank';
+            // SEC-015: rel en enlace externo
             btnExterno.rel = 'noopener noreferrer';
             btnExterno.style.cssText = 'display: inline-block; margin-top: 15px; background: #d9534f; color: #fff; padding: 10px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 0.9rem;';
             elCuerpo.appendChild(btnExterno);
         }
         btnExterno.style.display = 'inline-block';
         btnExterno.href = noticia.enlace;
-        btnExterno.innerText = 'Ir a ver al portal original ↗';
+        btnExterno.textContent = 'Ir a ver al portal original ↗';
     }
 
     if (modalImagenElem) {
@@ -352,22 +552,24 @@ function abrirMinutoUnoModal(noticia) {
 // -------------------------------------------------------------
 function formatearFechaYHora(fechaCruda, horaCruda) {
     if (!fechaCruda) return '';
-    let fechaStr = String(fechaCruda).trim();
-    let fechaLimpia = fechaStr.includes('T') ? fechaStr.split('T')[0] : fechaStr.substring(0, 10);
+    const fechaStr = String(fechaCruda).trim();
+    const fechaLimpia = fechaStr.includes('T') ? fechaStr.split('T')[0] : fechaStr.substring(0, 10);
     let fuenteHora = horaCruda;
     if ((!fuenteHora || String(fuenteHora).trim() === '' || String(fuenteHora).trim() === 'null') && fechaStr.includes('T')) {
         fuenteHora = fechaStr.split('T')[1];
     }
     let horaFinal = '';
     if (fuenteHora && String(fuenteHora).trim() !== 'null') {
-        let match = String(fuenteHora).match(/\d{2}:\d{2}/);
+        const match = String(fuenteHora).match(/\d{2}:\d{2}/);
         horaFinal = match ? match[0] : String(fuenteHora).trim();
     }
     return horaFinal ? `${fechaLimpia} - ${horaFinal}` : fechaLimpia;
 }
 
 function filterNews() {
-    const input = document.getElementById('searchInput').value.toLowerCase().trim();
+    const searchInputEl = document.getElementById('searchInput');
+    if (!searchInputEl) return;
+    const input = searchInputEl.value.toLowerCase().trim();
     if (input === "") {
         renderizarNoticiasAppsScript(todasLasNoticias);
         return;
@@ -429,8 +631,8 @@ function inicializarArrastrePlayer() {
 
         const onMouseMove = (ev) => {
             if (!isDragging) return;
-            let newX = initialX + (ev.clientX - startX);
-            let newY = initialY + (ev.clientY - startY);
+            const newX = initialX + (ev.clientX - startX);
+            const newY = initialY + (ev.clientY - startY);
             player.style.left = Math.max(0, Math.min(newX, window.innerWidth - player.offsetWidth)) + 'px';
             player.style.top = Math.max(0, Math.min(newY, window.innerHeight - player.offsetHeight)) + 'px';
         };
@@ -444,4 +646,86 @@ function inicializarArrastrePlayer() {
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
+}
+
+// -------------------------------------------------------------
+// 5. MODAL DE ADMINISTRACIÓN DE PUBLICIDADES (ADS)
+// -------------------------------------------------------------
+function inicializarAdminAds() {
+    const btnAdminAds = document.getElementById('btn-admin-ads');
+    const modalAds = document.getElementById('modal-admin-ads');
+    const btnCerrarModal = document.getElementById('btn-cerrar-modal-ads');
+    const formAds = document.getElementById('form-admin-ads');
+
+    if (btnAdminAds) {
+        btnAdminAds.addEventListener('click', () => {
+            if (sessionStorage.getItem("auth") === "true") {
+                if (modalAds) modalAds.style.display = 'flex';
+            } else {
+                const user = prompt("Ingrese el usuario administrador:");
+                if (user === null) return;
+                const pass = prompt("Ingrese la contraseña:");
+                if (pass === null) return;
+                
+                if (user === "admin" && pass === "radio2026") {
+                    sessionStorage.setItem("auth", "true");
+                    if (modalAds) modalAds.style.display = 'flex';
+                } else {
+                    alert("Credenciales incorrectas.");
+                }
+            }
+        });
+    }
+
+    if (btnCerrarModal) {
+        btnCerrarModal.addEventListener('click', () => {
+            if (modalAds) modalAds.style.display = 'none';
+        });
+    }
+
+    if (formAds) {
+        formAds.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btnGuardar = document.getElementById('btn-guardar-ad');
+            const originalText = btnGuardar.textContent;
+            btnGuardar.textContent = 'Guardando...';
+            btnGuardar.disabled = true;
+
+            const titulo = document.getElementById('ad-titulo').value;
+            const imagen = document.getElementById('ad-imagen').value;
+            const texto = document.getElementById('ad-texto').value;
+            const telefono = document.getElementById('ad-telefono').value;
+            const email = document.getElementById('ad-email').value;
+            const url = document.getElementById('ad-url').value;
+
+            const datos = {
+                action: "add_ad",
+                titulo, imagen, texto, telefono, email, url
+            };
+
+            fetch(urlAppsScriptMinutoUno, {
+                method: 'POST',
+                body: JSON.stringify(datos)
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnGuardar.textContent = originalText;
+                btnGuardar.disabled = false;
+                if (data.resultado === "success") {
+                    alert("Publicidad añadida con éxito.");
+                    formAds.reset();
+                    if (modalAds) modalAds.style.display = 'none';
+                    cargarDatosSecundarios();
+                } else {
+                    alert("Hubo un error al procesar la solicitud: " + (data.mensaje || ""));
+                }
+            })
+            .catch(err => {
+                console.error("Error guardando ad:", err);
+                btnGuardar.textContent = originalText;
+                btnGuardar.disabled = false;
+                alert("Error de red al intentar guardar la publicidad.");
+            });
+        });
+    }
 }

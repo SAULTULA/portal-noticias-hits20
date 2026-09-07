@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Radio en Vivo - Hits 20 Radio, San Luis, Argentina.">
     <title>Radio en Vivo</title>
     <style>
         body {
@@ -27,7 +28,8 @@
     </style>
 </head>
 <body>
-    <img src="logo.png" alt="Logo" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22><rect width=%22120%22 height=%22120%22 rx=%2260%22 fill=%22%23d9534f%22/><text x=%2250%25%22 y=%2255%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22 font-size=%2216%22 font-weight=%22bold%22>RADIO</text></svg>'">
+    <!-- SEC-013: sin onerror inline complejo — se maneja via addEventListener en el script -->
+    <img src="logo.png" alt="Logo Hits 20 Radio" id="logo-radio" loading="lazy">
     <h3>Hits 20 Radio</h3>
     <p>Transmitiendo en Vivo</p>
     
@@ -36,5 +38,16 @@
         <source src="https://stream.radiosmundiales.com/stream/claudio" type="audio/mpeg">
         Tu navegador no soporta el reproductor.
     </audio>
+
+    <script>
+        // SEC-013: manejo de error de imagen via addEventListener
+        const logoImg = document.getElementById('logo-radio');
+        if (logoImg) {
+            logoImg.addEventListener('error', function () {
+                this.onerror = null;
+                this.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><rect width='120' height='120' rx='60' fill='%23d9534f'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'>RADIO</text></svg>";
+            });
+        }
+    </script>
 </body>
 </html>
