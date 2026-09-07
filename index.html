@@ -193,8 +193,9 @@
             </div>
 
             <!-- Contador de Visitas -->
-            <div class="contador-widget" style="margin-top: 15px; text-align: center;">
-    <iframe src="globe.html?v=1.0.1" width="100%" height="600" frameborder="0" scrolling="no" style="border:none; overflow:hidden; border-radius:8px;"></iframe>
+            <!-- Contador de Visitas -->
+            <div class="contador-widget">
+                <iframe src="https://gente-de-medios.vercel.app/widget?id=portaldenoticiashits20" width="280" height="350" frameborder="0" scrolling="no"></iframe>
             </div>
         
             <!-- Formulario de Contacto -->
@@ -252,22 +253,30 @@
     </div>
 
     <!-- REPRODUCTOR DE RADIO FLOTANTE -->
-    <div id="radio-modal-flotante" class="radio-flotante-container">
-        <div id="radio-header-drag" class="radio-flotante-header">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <img src="logo.png" alt="Logo" style="width: 30px; height: 30px; object-fit: contain; border-radius: 4px;">
-                <span style="font-weight: bold;">Radio en Vivo</span>
+    <!-- REPRODUCTOR DE RADIO FLOTANTE -->
+    <div id="radio-modal-flotante" class="player-widget">
+        <div id="radio-header-drag" class="player-widget__header">
+            <div class="player-widget__brand">
+                <img src="logo.png" alt="Logo" class="player-widget__logo">
+                <span class="player-widget__title">Radio en Vivo</span>
             </div>
-            <span class="radio-flotante-close" onclick="cerrarPlayer()" style="cursor: pointer; font-size: 1.2rem;">&times;</span>
+            <button class="player-widget__close" onclick="cerrarPlayer()" aria-label="Cerrar">&times;</button>
         </div>
-        <div class="radio-flotante-body" style="padding: 15px;">
-            <audio id="audio-stream" controls autoplay style="width: 100%;">
+        <div class="player-widget__body">
+            <div class="player-widget__visualizer">
+                <div class="player-widget__bar"></div>
+                <div class="player-widget__bar"></div>
+                <div class="player-widget__bar"></div>
+                <div class="player-widget__bar"></div>
+                <div class="player-widget__bar"></div>
+            </div>
+            <audio id="audio-stream" class="player-widget__audio" controls autoplay>
                 <source src="https://stream.radiosmundiales.com/stream/claudio" type="audio/mpeg">
                 Tu navegador no soporta el elemento de audio.
             </audio>
-            <div style="margin-top: 10px; text-align: center;">
-              <label for="volumeSlider" style="font-size: 0.8rem; color: #555; display: block; margin-bottom: 4px;">Volumen: <span id="volumeValue">40</span>%</label>
-              <input type="range" id="volumeSlider" min="0" max="100" value="40" style="width: 100%; cursor: pointer;" oninput="cambiarVolumen(this.value)">
+            <div class="player-widget__volume-control">
+                <label for="volumeSlider" class="player-widget__volume-label">Volumen: <span id="volumeValue">40</span>%</label>
+                <input type="range" id="volumeSlider" class="player-widget__volume-slider" min="0" max="100" value="40" oninput="cambiarVolumen(this.value)">
             </div>
         </div>
     </div>

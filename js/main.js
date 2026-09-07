@@ -415,7 +415,7 @@ function inicializarArrastrePlayer() {
     let isDragging = false, startX, startY, initialX, initialY;
 
     header.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('radio-flotante-close')) return;
+        if (e.target.classList.contains('player-widget__close')) return;
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;

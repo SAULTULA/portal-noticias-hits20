@@ -1,4 +1,4 @@
-﻿/* ==========================================
+/* ==========================================
    ESTILOS GENERALES DEL PORTAL DE NOTICIAS
    ========================================== */
 * {
@@ -537,60 +537,171 @@ body {
     color: #444;
 }
 
-/* Reproductor Flotante */
-.radio-flotante-container {
+/* Reproductor Flotante Modernizado */
+.player-widget {
     display: none;
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 300px;
-    background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    width: 280px;
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     z-index: 2000;
     overflow: hidden;
-    border: 1px solid #ddd;
-    animation: fadeIn 0.3s ease-in-out;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    color: #fff;
 }
 
-.radio-flotante-header {
-    background-color: #1a1a1a;
-    color: #ffffff;
-    padding: 10px 15px;
+.player-widget__header {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.0) 100%);
+    padding: 8px 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-weight: bold;
-    font-size: 0.9rem;
-    border-bottom: 3px solid #d9534f;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     cursor: grab;
     user-select: none;
 }
 
-.radio-flotante-header:active {
+.player-widget__header:active {
     cursor: grabbing;
 }
 
-.radio-flotante-close {
-    cursor: pointer;
-    font-size: 1.4rem;
+.player-widget__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.player-widget__logo {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+    padding: 2px;
+}
+
+.player-widget__title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    color: #f0f0f0;
+}
+
+.player-widget__close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
     color: #aaa;
-    line-height: 1;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
 }
 
-.radio-flotante-close:hover {
+.player-widget__close:hover {
     color: #fff;
+    background: #d9534f;
+    transform: scale(1.1);
 }
 
-.radio-flotante-body {
-    padding: 15px;
-    background: #f9f9f9;
-    text-align: center;
+.player-widget__body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.player-widget__visualizer {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 4px;
+    height: 15px;
+    margin-bottom: 2px;
+}
+
+.player-widget__bar {
+    width: 4px;
+    background: #d9534f;
+    border-radius: 3px;
+    animation: bounce 1.2s ease infinite alternate;
+}
+
+.player-widget__bar:nth-child(1) { animation-delay: 0.1s; height: 30%; }
+.player-widget__bar:nth-child(2) { animation-delay: 0.3s; height: 60%; }
+.player-widget__bar:nth-child(3) { animation-delay: 0.0s; height: 100%; }
+.player-widget__bar:nth-child(4) { animation-delay: 0.4s; height: 50%; }
+.player-widget__bar:nth-child(5) { animation-delay: 0.2s; height: 75%; }
+
+@keyframes bounce {
+    0% { height: 20%; background: #d9534f; }
+    100% { height: 100%; background: #ff7675; box-shadow: 0 0 10px rgba(217, 83, 79, 0.6); }
+}
+
+.player-widget__audio {
+    width: 100%;
+    height: 36px;
+    border-radius: 18px;
+    outline: none;
+}
+.player-widget__audio::-webkit-media-controls-panel {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+.player-widget__volume-control {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px 10px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.player-widget__volume-label {
+    font-size: 0.75rem;
+    color: #ccc;
+    font-weight: 500;
+}
+
+.player-widget__volume-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.player-widget__volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #d9534f;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(217, 83, 79, 0.8);
+    transition: transform 0.1s;
+}
+
+.player-widget__volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Modal Clima */
@@ -693,11 +804,11 @@ body {
     .main-container {
         flex-direction: column;
     }
-    .radio-flotante-container {
-        width: calc(100% - 30px);
-        left: 15px;
-        right: 15px;
-        bottom: 15px;
+    .player-widget {
+        width: calc(100% - 32px);
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
     }
 }
 
