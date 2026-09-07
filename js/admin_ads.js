@@ -1,21 +1,59 @@
 const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbySMz7KUr-PtZzk6fMTfvJqY1dQZk_c87qblUgbOPqOfJcNznb_3Czls-EDkH3hfn5B1g/exec";
 
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "radio2026";
+
 let publicidadesLocales = [];
 
 document.addEventListener("DOMContentLoaded", () => {
+    // ── LÓGICA DE LOGIN ──
+    const loginScreen = document.getElementById("login-screen");
+    const mainPanel   = document.getElementById("main-panel");
+    const btnLogin    = document.getElementById("btn-login");
+    const loginError  = document.getElementById("login-error");
+    const loginPass   = document.getElementById("login-pass");
+
+    // Si ya inició sesión en esta pestaña, mostrar panel directamente
+    if (sessionStorage.getItem("ads_auth") === "true") {
+        loginScreen.style.display = "none";
+        mainPanel.style.display = "block";
+        inicializarPanel();
+    }
+
+    // Enter en el campo contraseña también inicia sesión
+    loginPass.addEventListener("keydown", e => {
+        if (e.key === "Enter") btnLogin.click();
+    });
+
+    btnLogin.addEventListener("click", () => {
+        const user = document.getElementById("login-user").value.trim();
+        const pass = document.getElementById("login-pass").value;
+
+        if (user === ADMIN_USER && pass === ADMIN_PASS) {
+            sessionStorage.setItem("ads_auth", "true");
+            loginScreen.style.display = "none";
+            mainPanel.style.display = "block";
+            inicializarPanel();
+        } else {
+            loginError.style.display = "block";
+            document.getElementById("login-pass").value = "";
+        }
+    });
+
+    // Si NO está autenticado, no llamar a inicializarPanel
+    if (sessionStorage.getItem("ads_auth") !== "true") return;
+});
+
+function inicializarPanel() {
     cargarPublicidades();
 
-    const formAds = document.getElementById("form-admin-ads");
+    const formAds    = document.getElementById("form-admin-ads");
     const btnCancelar = document.getElementById("btn-cancelar-edicion");
 
-    if (formAds) {
-        formAds.addEventListener("submit", guardarPublicidad);
-    }
-    
-    if (btnCancelar) {
-        btnCancelar.addEventListener("click", resetFormulario);
-    }
-});
+    if (formAds)     formAds.addEventListener("submit", guardarPublicidad);
+    if (btnCancelar) btnCancelar.addEventListener("click", resetFormulario);
+}
+
 
 function cargarPublicidades() {
     const listContainer = document.getElementById("ads-list-container");
