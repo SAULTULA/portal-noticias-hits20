@@ -300,34 +300,57 @@ async function guardarPublicidad(e) {
     });
 }
 
-// Convierte un File a base64 y lo sube a Google Drive vía Apps Script
-function subirImagenADrive(file) {
+// ── Comprime la imagen usando Canvas (máx 900px ancho, JPEG 75%) ──
+function comprimirImagen(file, maxAncho = 900, calidad = 0.75) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = async (ev) => {
-            try {
-                const base64Data = ev.target.result.split(",")[1]; // quitar el prefijo data:image/...;base64,
-                const payload = {
-                    action: "upload_image",
-                    filename: file.name,
-                    mimeType: file.type,
-                    base64: base64Data
-                };
-                const formData = new FormData();
-                formData.append('payload', JSON.stringify(payload));
-
-                const res = await fetch(urlAppsScriptMinutoUno, { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.resultado === "success" && data.url) {
-                    resolve(data.url);
-                } else {
-                    reject(new Error(data.mensaje || "Error desconocido al subir la imagen."));
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > maxAncho) {
+                    h = Math.round(h * maxAncho / w);
+                    w = maxAncho;
                 }
-            } catch (err) {
-                reject(err);
-            }
+                const canvas = document.createElement('canvas');
+                canvas.width  = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                // Siempre exportar como JPEG para maximizar compresión
+                const dataUrl = canvas.toDataURL('image/jpeg', calidad);
+                resolve(dataUrl);
+            };
+            img.onerror = () => reject(new Error("No se pudo cargar la imagen para comprimir."));
+            img.src = ev.target.result;
         };
         reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
         reader.readAsDataURL(file);
     });
+}
+
+// Comprime y sube la imagen a Google Drive vía Apps Script
+async function subirImagenADrive(file) {
+    // 1. Comprimir la imagen en el navegador antes de enviar
+    const dataUrl    = await comprimirImagen(file);
+    const base64Data = dataUrl.split(",")[1]; // Quitar prefijo data:image/...;base64,
+
+    const payload = {
+        action:   "upload_image",
+        filename: file.name.replace(/\.[^.]+$/, "") + ".jpg", // forzar extensión .jpg
+        mimeType: "image/jpeg",
+        base64:   base64Data
+    };
+
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(payload));
+
+    const res  = await fetch(urlAppsScriptMinutoUno, { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.resultado === "success" && data.url) {
+        return data.url;
+    } else {
+        throw new Error(data.mensaje || "Error desconocido al subir la imagen.");
+    }
 }
