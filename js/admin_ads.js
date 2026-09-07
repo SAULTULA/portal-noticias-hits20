@@ -47,11 +47,57 @@ document.addEventListener("DOMContentLoaded", () => {
 function inicializarPanel() {
     cargarPublicidades();
 
-    const formAds    = document.getElementById("form-admin-ads");
+    const formAds     = document.getElementById("form-admin-ads");
     const btnCancelar = document.getElementById("btn-cancelar-edicion");
 
     if (formAds)     formAds.addEventListener("submit", guardarPublicidad);
     if (btnCancelar) btnCancelar.addEventListener("click", resetFormulario);
+
+    // ── TOGGLE URL / ARCHIVO ──
+    const btnModoUrl     = document.getElementById("btn-modo-url");
+    const btnModoArchivo = document.getElementById("btn-modo-archivo");
+    const panelUrl       = document.getElementById("panel-url");
+    const panelArchivo   = document.getElementById("panel-archivo");
+    const imgPreview     = document.getElementById("img-preview");
+    const inputUrl       = document.getElementById("ad-imagen");
+    const inputFile      = document.getElementById("ad-imagen-file");
+
+    btnModoUrl.addEventListener("click", () => {
+        btnModoUrl.classList.add("active");
+        btnModoArchivo.classList.remove("active");
+        panelUrl.style.display = "block";
+        panelArchivo.style.display = "none";
+    });
+
+    btnModoArchivo.addEventListener("click", () => {
+        btnModoArchivo.classList.add("active");
+        btnModoUrl.classList.remove("active");
+        panelUrl.style.display = "none";
+        panelArchivo.style.display = "block";
+    });
+
+    // Preview en tiempo real al escribir URL
+    inputUrl.addEventListener("input", () => {
+        const val = inputUrl.value.trim();
+        if (val) {
+            imgPreview.src = val;
+            imgPreview.style.display = "block";
+        } else {
+            imgPreview.style.display = "none";
+        }
+    });
+
+    // Preview al seleccionar archivo
+    inputFile.addEventListener("change", () => {
+        const file = inputFile.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            imgPreview.src = e.target.result;
+            imgPreview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 
@@ -168,7 +214,7 @@ function eliminarPublicidad(titulo) {
     });
 }
 
-function guardarPublicidad(e) {
+async function guardarPublicidad(e) {
     e.preventDefault();
     
     const originalTitulo = document.getElementById("ad-original-titulo").value;
@@ -179,11 +225,43 @@ function guardarPublicidad(e) {
     btnGuardar.textContent = 'Procesando...';
     btnGuardar.disabled = true;
 
+    // ── Resolver la imagen: URL externa o archivo local ──
+    let imagenFinal = document.getElementById('ad-imagen').value.trim();
+
+    const modoArchivo = document.getElementById("btn-modo-archivo").classList.contains("active");
+    const fileInput   = document.getElementById("ad-imagen-file");
+
+    if (modoArchivo && fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const progress = document.getElementById("upload-progress");
+        progress.style.display = "block";
+        btnGuardar.textContent = 'Subiendo imagen...';
+        try {
+            imagenFinal = await subirImagenADrive(file);
+        } catch (err) {
+            progress.style.display = "none";
+            btnGuardar.textContent = textoBoton;
+            btnGuardar.disabled = false;
+            alert("Error al subir la imagen: " + err.message);
+            return;
+        }
+        progress.style.display = "none";
+    }
+
+    if (!imagenFinal) {
+        alert("Por favor ingresá una URL de imagen o seleccioná un archivo.");
+        btnGuardar.textContent = textoBoton;
+        btnGuardar.disabled = false;
+        return;
+    }
+
+    btnGuardar.textContent = 'Guardando...';
+
     const datos = {
         action: isEdit ? "edit_ad" : "add_ad",
         tituloOriginal: originalTitulo,
         titulo: document.getElementById('ad-titulo').value,
-        imagen: document.getElementById('ad-imagen').value,
+        imagen: imagenFinal,
         texto: document.getElementById('ad-texto').value,
         telefono: document.getElementById('ad-telefono').value,
         email: document.getElementById('ad-email').value,
@@ -205,10 +283,8 @@ function guardarPublicidad(e) {
             alert(isEdit ? "Publicidad actualizada con éxito." : "Publicidad añadida con éxito.");
             resetFormulario();
             cargarPublicidades();
-            
-            // Si la ventana principal existe, notificarle que debe recargar (opcional)
             if (window.opener && !window.opener.closed) {
-                if(typeof window.opener.cargarDatosSecundarios === "function") {
+                if (typeof window.opener.cargarDatosSecundarios === "function") {
                     window.opener.cargarDatosSecundarios();
                 }
             }
@@ -221,5 +297,37 @@ function guardarPublicidad(e) {
         btnGuardar.textContent = textoBoton;
         btnGuardar.disabled = false;
         alert("Error de red al intentar guardar la publicidad.");
+    });
+}
+
+// Convierte un File a base64 y lo sube a Google Drive vía Apps Script
+function subirImagenADrive(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            try {
+                const base64Data = ev.target.result.split(",")[1]; // quitar el prefijo data:image/...;base64,
+                const payload = {
+                    action: "upload_image",
+                    filename: file.name,
+                    mimeType: file.type,
+                    base64: base64Data
+                };
+                const formData = new FormData();
+                formData.append('payload', JSON.stringify(payload));
+
+                const res = await fetch(urlAppsScriptMinutoUno, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.resultado === "success" && data.url) {
+                    resolve(data.url);
+                } else {
+                    reject(new Error(data.mensaje || "Error desconocido al subir la imagen."));
+                }
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
+        reader.readAsDataURL(file);
     });
 }

@@ -162,6 +162,45 @@
             margin-top: 10px;
             display: none;
         }
+        /* ── SELECTOR DE IMAGEN ── */
+        .img-source-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid #ccc;
+        }
+        .img-source-toggle button {
+            flex: 1;
+            padding: 7px;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #777;
+            transition: background 0.2s, color 0.2s;
+        }
+        .img-source-toggle button.active {
+            background: #d9534f;
+            color: #fff;
+        }
+        #img-preview {
+            width: 100%;
+            max-height: 180px;
+            object-fit: contain;
+            border-radius: 6px;
+            margin-top: 8px;
+            display: none;
+            background: #f0f0f0;
+        }
+        #upload-progress {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 6px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -200,8 +239,23 @@
                         <input type="text" id="ad-titulo" required>
                     </div>
                     <div class="form-group">
-                        <label>URL de la Imagen:</label>
-                        <input type="url" id="ad-imagen" required placeholder="https://...">
+                        <label>Imagen de la publicidad:</label>
+                        <!-- Toggle URL / Archivo -->
+                        <div class="img-source-toggle">
+                            <button type="button" id="btn-modo-url"     class="active">🔗 URL externa</button>
+                            <button type="button" id="btn-modo-archivo"  class="">📁 Archivo local</button>
+                        </div>
+                        <!-- Panel URL -->
+                        <div id="panel-url">
+                            <input type="url" id="ad-imagen" placeholder="https://...">
+                        </div>
+                        <!-- Panel Archivo -->
+                        <div id="panel-archivo" style="display:none;">
+                            <input type="file" id="ad-imagen-file" accept="image/png, image/jpeg, image/gif, image/webp">
+                            <p id="upload-progress">⏳ Subiendo imagen a Google Drive...</p>
+                        </div>
+                        <!-- Preview compartido -->
+                        <img id="img-preview" src="" alt="Vista previa">
                     </div>
                     <div class="form-group">
                         <label>Texto corto (opcional):</label>
