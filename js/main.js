@@ -427,26 +427,32 @@ function renderizarPublicidades(publicidades) {
     if (!contenedor) return;
     contenedor.innerHTML = '';
 
-    if (!publicidades || publicidades.length === 0) {
-        const slot1 = document.createElement('div');
-        slot1.className = 'ad-slot';
-        slot1.innerHTML = '<p>Espacio Publicitario / Flyer 1</p>';
-        const slot2 = document.createElement('div');
-        slot2.className = 'ad-slot';
-        slot2.innerHTML = '<p>Espacio Publicitario / Flyer 2</p>';
-        contenedor.appendChild(slot1);
-        contenedor.appendChild(slot2);
-        return;
-    }
+    const MAX_SLOTS = 5;
+    const lista = (publicidades || []).slice(0, MAX_SLOTS);
 
-    publicidades.forEach(pub => {
+    for (let i = 0; i < MAX_SLOTS; i++) {
+        const pub = lista[i];
+
         const adWrapper = document.createElement('div');
         adWrapper.style.cssText = 'background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; text-align: center;';
-        
+
+        if (!pub) {
+            // Slot vacío - placeholder visual
+            adWrapper.style.cssText += 'border: 2px dashed #ddd; color: #aaa; min-height: 80px; display: flex; align-items: center; justify-content: center;';
+            const placeholder = document.createElement('p');
+            placeholder.style.cssText = 'margin: 0; font-size: 0.85rem;';
+            placeholder.textContent = `Espacio Publicitario / Flyer ${i + 1}`;
+            adWrapper.appendChild(placeholder);
+            contenedor.appendChild(adWrapper);
+            continue;
+        }
+
+        // Slot con publicidad real
         const img = document.createElement('img');
         img.src = pub.imagen || pub.Imagen || imgFallback;
         img.alt = pub.titulo || pub.Titulo || 'Publicidad';
         img.style.cssText = 'width: 100%; border-radius: 6px; object-fit: contain; max-height: 250px;';
+        img.addEventListener('error', function () { this.src = imgFallback; });
         adWrapper.appendChild(img);
         
         const textWrapper = document.createElement('div');
@@ -499,7 +505,7 @@ function renderizarPublicidades(publicidades) {
 
         adWrapper.appendChild(textWrapper);
         contenedor.appendChild(adWrapper);
-    });
+    }
 }
 
 // Función para mostrar la noticia de Minuto 1 dentro del Modal Emergente
