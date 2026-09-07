@@ -653,14 +653,11 @@ function inicializarArrastrePlayer() {
 // -------------------------------------------------------------
 function inicializarAdminAds() {
     const btnAdminAds = document.getElementById('btn-admin-ads');
-    const modalAds = document.getElementById('modal-admin-ads');
-    const btnCerrarModal = document.getElementById('btn-cerrar-modal-ads');
-    const formAds = document.getElementById('form-admin-ads');
 
     if (btnAdminAds) {
         btnAdminAds.addEventListener('click', () => {
             if (sessionStorage.getItem("auth") === "true") {
-                if (modalAds) modalAds.style.display = 'flex';
+                window.open("admin_ads.html", "AdminAds", "width=900,height=650,left=100,top=100,resizable=yes,scrollbars=yes");
             } else {
                 const user = prompt("Ingrese el usuario administrador:");
                 if (user === null) return;
@@ -669,63 +666,11 @@ function inicializarAdminAds() {
                 
                 if (user === "admin" && pass === "radio2026") {
                     sessionStorage.setItem("auth", "true");
-                    if (modalAds) modalAds.style.display = 'flex';
+                    window.open("admin_ads.html", "AdminAds", "width=900,height=650,left=100,top=100,resizable=yes,scrollbars=yes");
                 } else {
                     alert("Credenciales incorrectas.");
                 }
             }
-        });
-    }
-
-    if (btnCerrarModal) {
-        btnCerrarModal.addEventListener('click', () => {
-            if (modalAds) modalAds.style.display = 'none';
-        });
-    }
-
-    if (formAds) {
-        formAds.addEventListener('submit', function (e) {
-            e.preventDefault();
-            const btnGuardar = document.getElementById('btn-guardar-ad');
-            const originalText = btnGuardar.textContent;
-            btnGuardar.textContent = 'Guardando...';
-            btnGuardar.disabled = true;
-
-            const titulo = document.getElementById('ad-titulo').value;
-            const imagen = document.getElementById('ad-imagen').value;
-            const texto = document.getElementById('ad-texto').value;
-            const telefono = document.getElementById('ad-telefono').value;
-            const email = document.getElementById('ad-email').value;
-            const url = document.getElementById('ad-url').value;
-
-            const datos = {
-                action: "add_ad",
-                titulo, imagen, texto, telefono, email, url
-            };
-
-            fetch(urlAppsScriptMinutoUno, {
-                method: 'POST',
-                body: JSON.stringify(datos)
-            })
-            .then(res => res.json())
-            .then(data => {
-                btnGuardar.textContent = originalText;
-                btnGuardar.disabled = false;
-                if (data.resultado === "success") {
-                    alert("Publicidad añadida con éxito.");
-                    formAds.reset();
-                    if (modalAds) modalAds.style.display = 'none';
-                    cargarDatosSecundarios();
-                } else {
-                    alert("Hubo un error al procesar la solicitud: " + (data.mensaje || ""));
-                }
-            })
-            .catch(err => {
-                console.error("Error guardando ad:", err);
-                btnGuardar.textContent = originalText;
-                btnGuardar.disabled = false;
-                alert("Error de red al intentar guardar la publicidad.");
-            });
         });
     }
 }
