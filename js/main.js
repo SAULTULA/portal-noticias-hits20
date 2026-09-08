@@ -256,7 +256,8 @@ function cerrarNoticia() {
 // -------------------------------------------------------------
 async function cargarDatosSecundarios() {
     try {
-        const response = await fetch(urlAppsScriptMinutoUno);
+        const ts = new Date().getTime();
+        const response = await fetch(`${urlAppsScriptMinutoUno}?_t=${ts}`);
         const data = await response.json();
         
         // Si el backend es el antiguo, devuelve un array
@@ -375,8 +376,18 @@ function renderizarFacebook(data) {
         const pubDate = item.fecha || item.Fecha || "";
         const imagenUrl = item.imagen || item.Imagen || imgFallback;
 
+        const isVideoPost = enlace.includes('/videos/') || enlace.includes('watch') || enlace.includes('reel');
+        const isPermalink = enlace.includes('permalink.php') || enlace.includes('/posts/');
+        let embedUrl = "";
+        if (isVideoPost) {
+            embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(enlace)}&show_text=false&width=560&height=315&appId=`;
+        } else if (isPermalink) {
+            embedUrl = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(enlace)}&show_text=true&width=350`;
+        }
+
         const card = document.createElement('article');
         card.className = 'card-noticia';
+        card.style.cursor = 'pointer';
 
         const imageBox = document.createElement('div');
         imageBox.className = 'card-image-box';
@@ -398,13 +409,14 @@ function renderizarFacebook(data) {
         const h3 = document.createElement('h3');
         h3.textContent = titulo;
 
-        const link = document.createElement('a');
-        link.href = enlace;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
+        const link = document.createElement('button');
         link.className = 'btn-read-more';
-        link.style.cssText = 'display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 0.85rem; font-weight: bold;';
-        link.textContent = 'Ver en Facebook ↗';
+        link.style.cssText = 'display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; font-size: 0.85rem; font-weight: bold;';
+        link.textContent = 'Ver publicación';
+        link.addEventListener('click', (e) => {
+            e.stopPropagation();
+            abrirFacebookModal(titulo, enlace, embedUrl);
+        });
 
         cardBody.appendChild(badge);
         if (pubDate) {
@@ -418,8 +430,44 @@ function renderizarFacebook(data) {
 
         card.appendChild(imageBox);
         card.appendChild(cardBody);
+        
+        card.addEventListener('click', () => {
+            abrirFacebookModal(titulo, enlace, embedUrl);
+        });
+
         contenedor.appendChild(card);
     });
+}
+
+function abrirFacebookModal(titulo, enlace, embedUrl) {
+    const existing = document.getElementById('fb-modal-overlay');
+    if (existing) existing.remove();
+
+    const embedHtml = embedUrl
+      ? `<iframe src="${embedUrl}" allowfullscreen scrolling="no" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" style="width:100%;height:100%;border:none;"></iframe>`
+      : `<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0a0a0a;flex-direction:column;gap:12px;">
+           <p style="color:#aaa;font-size:0.9rem;text-align:center;padding:0 20px;">No hay preview disponible.</p>
+           <a href="${enlace}" target="_blank" rel="noopener" style="background:#1877f2;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Ver en Facebook ↗</a>
+         </div>`;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'fb-modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:999999;';
+    
+    overlay.innerHTML = `
+      <div style="background:#fff;width:90%;max-width:600px;border-radius:8px;overflow:hidden;position:relative;">
+        <button id="fb-modal-close" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;font-size:16px;">✕</button>
+        <div style="width:100%;aspect-ratio:16/9;background:#000;">
+            ${embedHtml}
+        </div>
+        <div style="padding:15px;background:#fff;color:#333;font-size:1rem;font-weight:bold;">
+            ${titulo}
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    document.getElementById('fb-modal-close').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
 
 function renderizarPublicidades(publicidades) {
