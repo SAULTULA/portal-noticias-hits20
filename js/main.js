@@ -9,10 +9,10 @@ const imgFallback = "logo.png";
 
 let todasLasNoticias = [];
 
-// Inicializar Supabase
+// Inicializar Supabase (se hará de forma lazy para evitar crasheos si el SDK no carga)
+let supabase = null;
 const supabaseUrl = 'https://ugbwqusesrygfhkckncr.supabase.co';
 const supabaseKey = 'sb_publishable_ryxtditdrjjRaHijZwc2Zw_07i9H8Ar';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -288,6 +288,15 @@ async function cargarDatosSecundarios() {
 
 async function cargarFacebookDesdeSupabase() {
     try {
+        if (!window.supabase) {
+            console.error("SDK de Supabase no cargado.");
+            return;
+        }
+        
+        if (!supabase) {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        }
+
         const { data, error } = await supabase
             .from('fb_posts')
             .select('*')
