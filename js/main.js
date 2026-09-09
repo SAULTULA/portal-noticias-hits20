@@ -3,11 +3,17 @@ const urlAPI = "https://script.google.com/macros/s/AKfycbzrN4pskes2eTBGxvuvsPFuK
 // URL corregida de Minuto 1 (sin caracteres extra al final)
 const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbxs3faetjE3Lykcbu1L0Idvunvol-5-UMGbSIFkDJOgmjlPf45HUN73sLvypAKXe1-Zfg/exec";
 
-// Feed RSS de Facebook
-const urlRssFacebook = "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml";
+// Feed RSS de Facebook (Obsoleto, ahora usamos Supabase)
+// const urlRssFacebook = "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml";
 const imgFallback = "logo.png";
 
 let todasLasNoticias = [];
+
+// Inicializar Supabase
+const supabaseUrl = 'https://ugbwqusesrygfhkckncr.supabase.co';
+const supabaseKey = 'sb_publishable_ryxtditdrjjRaHijZwc2Zw_07i9H8Ar';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 
 document.addEventListener("DOMContentLoaded", function () {
     // 1. Carga de Noticias de Apps Script (Provinciales, Nacionales, Internacionales)
@@ -268,15 +274,41 @@ async function cargarDatosSecundarios() {
             if (data.noticias || data.minuto1) {
                 renderizarMinutoUno(data.noticias || data.minuto1);
             }
-            if (data.facebook) {
-                renderizarFacebook(data.facebook);
-            }
             if (data.publicidades) {
                 renderizarPublicidades(data.publicidades);
             }
         }
     } catch (err) {
         console.error("Error al cargar datos secundarios:", err);
+    }
+    
+    // Cargar Facebook desde Supabase
+    cargarFacebookDesdeSupabase();
+}
+
+async function cargarFacebookDesdeSupabase() {
+    try {
+        const { data, error } = await supabase
+            .from('fb_posts')
+            .select('*')
+            .order('fecha_publicacion', { ascending: false })
+            .limit(3);
+            
+        if (error) throw error;
+        
+        renderizarFacebook(data);
+        
+        // Suscripción Realtime para actualizar automáticamente
+        supabase.channel('public:fb_posts')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fb_posts' }, (payload) => {
+                console.log('Nuevo post de Facebook recibido!', payload);
+                // Volver a cargar los últimos 3 para asegurar el orden correcto
+                cargarFacebookDesdeSupabase();
+            })
+            .subscribe();
+            
+    } catch (err) {
+        console.error('Error fetching Facebook posts from Supabase:', err);
     }
 }
 
@@ -371,17 +403,22 @@ function renderizarFacebook(data) {
 
     const items = data.slice(0, 3);
     items.forEach(item => {
+        // Compatibilidad con el nuevo formato de Supabase y el antiguo
         const titulo = item.titulo || item.Titulo || "Publicación de Facebook";
-        const enlace = item.enlace || item.Enlace || "#";
-        const pubDate = item.fecha || item.Fecha || "";
-        const imagenUrl = item.imagen || item.Imagen || imgFallback;
+        const enlace = item.post_id ? `https://facebook.com/${item.post_id}` : (item.enlace || item.Enlace || "#");
+        const pubDate = item.fecha_publicacion || item.fecha || item.Fecha || "";
+        const imagenUrl = item.media_url || item.imagen || item.Imagen || imgFallback;
+        const mediaType = item.media_type || 'image';
 
-        const isVideoPost = enlace.includes('/videos/') || enlace.includes('watch') || enlace.includes('reel');
-        const isPermalink = enlace.includes('permalink.php') || enlace.includes('/posts/');
+        const isVideoPost = mediaType === 'video' || enlace.includes('/videos/') || enlace.includes('watch') || enlace.includes('reel');
         let embedUrl = "";
-        if (isVideoPost) {
+        
+        if (mediaType === 'video' && item.media_url) {
+            // Si es un video alojado en Supabase
+            embedUrl = item.media_url;
+        } else if (isVideoPost) {
             embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(enlace)}&show_text=false&width=560&height=315&appId=`;
-        } else if (isPermalink) {
+        } else {
             embedUrl = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(enlace)}&show_text=true&width=350`;
         }
 
@@ -432,23 +469,28 @@ function renderizarFacebook(data) {
         card.appendChild(cardBody);
         
         card.addEventListener('click', () => {
-            abrirFacebookModal(titulo, enlace, embedUrl);
+            abrirFacebookModal(titulo, enlace, embedUrl, mediaType === 'video' && item.media_url ? true : false);
         });
 
         contenedor.appendChild(card);
     });
 }
 
-function abrirFacebookModal(titulo, enlace, embedUrl) {
+function abrirFacebookModal(titulo, enlace, embedUrl, isDirectVideo = false) {
     const existing = document.getElementById('fb-modal-overlay');
     if (existing) existing.remove();
 
-    const embedHtml = embedUrl
-      ? `<iframe src="${embedUrl}" allowfullscreen scrolling="no" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" style="width:100%;height:100%;border:none;"></iframe>`
-      : `<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0a0a0a;flex-direction:column;gap:12px;">
+    let embedHtml = "";
+    if (isDirectVideo) {
+        embedHtml = `<video src="${embedUrl}" controls autoplay style="width:100%;height:100%;object-fit:contain;background:#000;"></video>`;
+    } else if (embedUrl && embedUrl.includes('facebook.com')) {
+        embedHtml = `<iframe src="${embedUrl}" allowfullscreen scrolling="no" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" style="width:100%;height:100%;border:none;"></iframe>`;
+    } else {
+        embedHtml = `<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0a0a0a;flex-direction:column;gap:12px;">
            <p style="color:#aaa;font-size:0.9rem;text-align:center;padding:0 20px;">No hay preview disponible.</p>
            <a href="${enlace}" target="_blank" rel="noopener" style="background:#1877f2;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Ver en Facebook ↗</a>
          </div>`;
+    }
 
     const overlay = document.createElement('div');
     overlay.id = 'fb-modal-overlay';
