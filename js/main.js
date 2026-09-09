@@ -10,7 +10,7 @@ const imgFallback = "logo.png";
 let todasLasNoticias = [];
 
 // Inicializar Supabase (se hará de forma lazy para evitar crasheos si el SDK no carga)
-let supabase = null;
+let supabaseClient = null;
 const supabaseUrl = 'https://ugbwqusesrygfhkckncr.supabase.co';
 const supabaseKey = 'sb_publishable_ryxtditdrjjRaHijZwc2Zw_07i9H8Ar';
 
@@ -293,11 +293,11 @@ async function cargarFacebookDesdeSupabase() {
             return;
         }
         
-        if (!supabase) {
-            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        if (!supabaseClient) {
+            supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('fb_posts')
             .select('*')
             .order('fecha_publicacion', { ascending: false })
@@ -308,7 +308,7 @@ async function cargarFacebookDesdeSupabase() {
         renderizarFacebook(data);
         
         // Suscripción Realtime para actualizar automáticamente
-        supabase.channel('public:fb_posts')
+        supabaseClient.channel('public:fb_posts')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fb_posts' }, (payload) => {
                 console.log('Nuevo post de Facebook recibido!', payload);
                 // Volver a cargar los últimos 3 para asegurar el orden correcto
