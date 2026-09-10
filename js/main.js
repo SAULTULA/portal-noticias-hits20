@@ -414,24 +414,14 @@ function renderizarFacebook(data) {
 
     const items = data.slice(0, 3);
     items.forEach(item => {
-        // Compatibilidad con el nuevo formato de Supabase y el antiguo
-        const titulo = item.titulo || item.Titulo || "Publicación de Facebook";
-        const enlace = item.post_id ? `https://facebook.com/${item.post_id}` : (item.enlace || item.Enlace || "#");
-        const pubDate = item.fecha_publicacion || item.fecha || item.Fecha || "";
+        const titulo    = item.titulo || item.Titulo || "Publicación de Facebook";
+        const cuerpo    = item.cuerpo || item.descripcion || "";
+        const pubDate   = item.fecha_publicacion || item.fecha || item.Fecha || "";
         const imagenUrl = item.media_url || item.imagen || item.Imagen || imgFallback;
+        const videoUrl  = item.video_url || "";   // URL del video en Supabase Storage
         const mediaType = item.media_type || 'image';
-
-        const isVideoPost = mediaType === 'video' || enlace.includes('/videos/') || enlace.includes('watch') || enlace.includes('reel');
-        let embedUrl = "";
-        
-        if (mediaType === 'video' && item.media_url) {
-            // Si es un video alojado en Supabase
-            embedUrl = item.media_url;
-        } else if (isVideoPost) {
-            embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(enlace)}&show_text=false&width=560&height=315&appId=`;
-        } else {
-            embedUrl = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(enlace)}&show_text=true&width=350`;
-        }
+        // Enlace externo a Facebook (solo como fallback)
+        const enlace    = item.post_id ? `https://facebook.com/${item.post_id}` : (item.enlace || item.Enlace || "#");
 
         const card = document.createElement('article');
         card.className = 'card-noticia';
@@ -439,10 +429,21 @@ function renderizarFacebook(data) {
 
         const imageBox = document.createElement('div');
         imageBox.className = 'card-image-box';
+        
+        // Si es video, mostrar play-icon sobre el thumbnail
+        if (mediaType === 'video' && videoUrl) {
+            imageBox.style.position = 'relative';
+            const playIcon = document.createElement('div');
+            playIcon.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.6);border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none;';
+            playIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M8 5v14l11-7z"/></svg>';
+            imageBox.appendChild(playIcon);
+        }
+        
         const img = document.createElement('img');
         img.src = imagenUrl;
         img.alt = titulo;
         img.loading = 'lazy';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
         img.addEventListener('error', function () { this.src = imgFallback; });
         imageBox.appendChild(img);
 
@@ -452,19 +453,10 @@ function renderizarFacebook(data) {
         const badge = document.createElement('span');
         badge.className = 'badge';
         badge.style.cssText = 'background: #1877f2; color: #fff;';
-        badge.textContent = 'Facebook';
+        badge.textContent = mediaType === 'video' ? '▶ Facebook Video' : 'Facebook';
 
         const h3 = document.createElement('h3');
-        h3.textContent = titulo;
-
-        const link = document.createElement('button');
-        link.className = 'btn-read-more';
-        link.style.cssText = 'display: inline-block; margin-top: 10px; background: #1877f2; color: #fff; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; font-size: 0.85rem; font-weight: bold;';
-        link.textContent = 'Ver publicación';
-        link.addEventListener('click', (e) => {
-            e.stopPropagation();
-            abrirFacebookModal(titulo, enlace, embedUrl);
-        });
+        h3.textContent = cuerpo ? cuerpo.substring(0, 80) + (cuerpo.length > 80 ? '...' : '') : titulo;
 
         cardBody.appendChild(badge);
         if (pubDate) {
@@ -474,54 +466,89 @@ function renderizarFacebook(data) {
             cardBody.appendChild(dateSpan);
         }
         cardBody.appendChild(h3);
-        cardBody.appendChild(link);
 
         card.appendChild(imageBox);
         card.appendChild(cardBody);
-        
+
+        // Al hacer click → abrir modal con video o imagen nativa
         card.addEventListener('click', () => {
-            abrirFacebookModal(titulo, enlace, embedUrl, mediaType === 'video' && item.media_url ? true : false);
+            abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlace);
         });
 
         contenedor.appendChild(card);
     });
 }
 
-function abrirFacebookModal(titulo, enlace, embedUrl, isDirectVideo = false) {
+function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb) {
     const existing = document.getElementById('fb-modal-overlay');
     if (existing) existing.remove();
 
-    let embedHtml = "";
-    if (isDirectVideo) {
-        embedHtml = `<video src="${embedUrl}" controls autoplay style="width:100%;height:100%;object-fit:contain;background:#000;"></video>`;
-    } else if (embedUrl && embedUrl.includes('facebook.com')) {
-        embedHtml = `<iframe src="${embedUrl}" allowfullscreen scrolling="no" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" style="width:100%;height:100%;border:none;"></iframe>`;
-    } else {
-        embedHtml = `<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0a0a0a;flex-direction:column;gap:12px;">
-           <p style="color:#aaa;font-size:0.9rem;text-align:center;padding:0 20px;">No hay preview disponible.</p>
-           <a href="${enlace}" target="_blank" rel="noopener" style="background:#1877f2;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Ver en Facebook ↗</a>
-         </div>`;
-    }
-
     const overlay = document.createElement('div');
     overlay.id = 'fb-modal-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:999999;';
-    
-    overlay.innerHTML = `
-      <div style="background:#fff;width:90%;max-width:600px;border-radius:8px;overflow:hidden;position:relative;">
-        <button id="fb-modal-close" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;font-size:16px;">✕</button>
-        <div style="width:100%;aspect-ratio:16/9;background:#000;">
-            ${embedHtml}
-        </div>
-        <div style="padding:15px;background:#fff;color:#333;font-size:1rem;font-weight:bold;">
-            ${titulo}
-        </div>
-      </div>`;
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:999999;padding:16px;box-sizing:border-box;';
 
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:#111;width:100%;max-width:600px;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.7);';
+
+    // ── Zona de media ──
+    const mediaZone = document.createElement('div');
+    mediaZone.style.cssText = 'width:100%;background:#000;';
+
+    if (videoUrl) {
+        // Video nativo alojado en Supabase
+        const video = document.createElement('video');
+        video.src = videoUrl;
+        video.controls = true;
+        video.autoplay = false;
+        video.style.cssText = 'width:100%;max-height:360px;display:block;background:#000;';
+        video.poster = imagenUrl || '';
+        mediaZone.appendChild(video);
+    } else if (imagenUrl && imagenUrl !== imgFallback) {
+        // Solo imagen
+        const img = document.createElement('img');
+        img.src = imagenUrl;
+        img.alt = titulo;
+        img.style.cssText = 'width:100%;max-height:360px;object-fit:cover;display:block;';
+        img.addEventListener('error', function() { this.style.display = 'none'; });
+        mediaZone.appendChild(img);
+    }
+
+    // ── Contenido textual ──
+    const content = document.createElement('div');
+    content.style.cssText = 'padding:18px 20px 20px;background:#1a1a1a;color:#f0f0f0;';
+
+    const badge = document.createElement('span');
+    badge.style.cssText = 'display:inline-block;background:#1877f2;color:#fff;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:10px;';
+    badge.textContent = videoUrl ? '▶ Video de Facebook' : 'Facebook';
+
+    const h2 = document.createElement('h2');
+    h2.style.cssText = 'font-size:1rem;font-weight:700;color:#fff;margin:0 0 8px 0;line-height:1.45;';
+    // Usar el texto de la publicación como título si está disponible
+    h2.textContent = cuerpo ? cuerpo.substring(0, 120) + (cuerpo.length > 120 ? '...' : '') : titulo;
+
+    const desc = document.createElement('p');
+    desc.style.cssText = 'font-size:0.88rem;color:#ccc;line-height:1.6;margin:0 0 16px 0;max-height:100px;overflow-y:auto;';
+    desc.textContent = cuerpo || '';
+
+    content.appendChild(badge);
+    content.appendChild(h2);
+    if (cuerpo && cuerpo.length > 120) content.appendChild(desc);
+
+    // Botón cerrar
+    const btnClose = document.createElement('button');
+    btnClose.textContent = '✕';
+    btnClose.style.cssText = 'position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;z-index:10;';
+    btnClose.addEventListener('click', () => overlay.remove());
+
+    modal.appendChild(mediaZone);
+    modal.appendChild(content);
+    modal.appendChild(btnClose);
+    overlay.appendChild(modal);
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
-    document.getElementById('fb-modal-close').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
+
 
 function renderizarPublicidades(publicidades) {
     const contenedor = document.getElementById('ads-container');
