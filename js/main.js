@@ -9,13 +9,7 @@ const imgFallback = "logo.png";
 
 let todasLasNoticias = [];
 
-// Feed RSS de Facebook (leído directamente desde el navegador del visitante)
-const urlRssFacebook = 'https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml';
-const CORS_PROXIES = [
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-    url => `https://thingproxy.freeboard.io/fetch/${url}`,
-];
+
 
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -277,6 +271,17 @@ async function cargarDatosSecundarios() {
             if (data.noticias || data.minuto1) {
                 renderizarMinutoUno(data.noticias || data.minuto1);
             }
+            if (data.facebook) {
+                // Mapear campos del Apps Script al formato que espera renderizarFacebook
+                const posts = data.facebook.map(f => ({
+                    titulo:            f.titulo || 'Publicación de Facebook',
+                    enlace:            f.enlace || '#',
+                    fecha_publicacion: f.fecha  || '',
+                    imagen:            f.imagen || imgFallback,
+                    media_type:        'image',
+                }));
+                renderizarFacebook(posts);
+            }
             if (data.publicidades) {
                 renderizarPublicidades(data.publicidades);
             }
@@ -284,80 +289,8 @@ async function cargarDatosSecundarios() {
     } catch (err) {
         console.error("Error al cargar datos secundarios:", err);
     }
-    
-    // Cargar Facebook desde RSS (lectura directa en el navegador)
-    cargarFacebookDesdeRSS();
 }
 
-async function cargarFacebookDesdeRSS() {
-    const contenedor = document.getElementById('grid-facebook');
-
-    // Intenta cada proxy hasta que uno funcione
-    for (const buildProxy of CORS_PROXIES) {
-        try {
-            const proxyUrl = buildProxy(urlRssFacebook);
-            const response = await fetch(proxyUrl);
-            if (!response.ok) continue;
-
-            const contentType = response.headers.get('content-type') || '';
-            let xmlText;
-
-            if (contentType.includes('application/json') || contentType.includes('text/plain')) {
-                // allorigins devuelve { contents: "..." }
-                const json = await response.json();
-                xmlText = json.contents || json;
-            } else {
-                // corsproxy.io y thingproxy devuelven XML directamente
-                xmlText = await response.text();
-            }
-
-            if (!xmlText || !xmlText.includes('<item>')) continue;
-
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-            const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 3);
-
-            if (!items.length) continue;
-
-            const posts = items.map(item => {
-                const enlace = item.querySelector('link')?.textContent?.trim()
-                    || item.querySelector('guid')?.textContent?.trim() || '#';
-                const descripcionHtml = item.querySelector('description')?.textContent || '';
-
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = descripcionHtml;
-                const imgTag = tempDiv.querySelector('img');
-                const imagenUrl = imgTag ? imgTag.src : imgFallback;
-                const textoPlano = tempDiv.textContent?.trim() || '';
-
-                return {
-                    titulo:            item.querySelector('title')?.textContent?.trim() || 'Publicación de Facebook',
-                    enlace,
-                    fecha_publicacion: item.querySelector('pubDate')?.textContent?.trim() || '',
-                    imagen:            imagenUrl,
-                    cuerpo:            textoPlano,
-                    media_type:        'image',
-                };
-            });
-
-            renderizarFacebook(posts);
-            return; // Éxito, salir del loop
-        } catch (err) {
-            // Este proxy falló, intentar el siguiente
-            console.warn('Proxy falló, intentando siguiente...', err.message);
-        }
-    }
-
-    // Todos los proxies fallaron
-    console.error('Todos los proxies CORS fallaron para el feed RSS de Facebook.');
-    if (contenedor) {
-        contenedor.innerHTML = '';
-        const msg = document.createElement('p');
-        msg.style.cssText = 'color:#666;font-size:0.9rem;';
-        msg.textContent = 'No se pudieron cargar las publicaciones de Facebook.';
-        contenedor.appendChild(msg);
-    }
-}
 
 function renderizarMinutoUno(data) {
     const contenedor = document.getElementById('grid-minutouno');
