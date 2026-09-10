@@ -488,11 +488,23 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb) {
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:999999;padding:16px;box-sizing:border-box;';
 
     const modal = document.createElement('div');
-    modal.style.cssText = 'background:#111;width:100%;max-width:600px;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.7);';
+    modal.style.cssText = [
+        'background:#111',
+        'width:95%',
+        'max-width:680px',
+        'max-height:90vh',
+        'border-radius:16px',
+        'overflow:hidden',
+        'overflow-y:auto',
+        'position:relative',
+        'box-shadow:0 24px 64px rgba(0,0,0,0.8)',
+        'display:flex',
+        'flex-direction:column'
+    ].join(';');
 
     // ── Zona de media ──
     const mediaZone = document.createElement('div');
-    mediaZone.style.cssText = 'width:100%;background:#000;';
+    mediaZone.style.cssText = 'width:100%;background:#000;flex-shrink:0;';
 
     if (videoUrl) {
         // Video nativo alojado en Supabase
@@ -500,44 +512,39 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb) {
         video.src = videoUrl;
         video.controls = true;
         video.autoplay = false;
-        video.style.cssText = 'width:100%;max-height:360px;display:block;background:#000;';
+        video.style.cssText = 'width:100%;max-height:420px;display:block;background:#000;';
         video.poster = imagenUrl || '';
         mediaZone.appendChild(video);
-    } else if (imagenUrl && imagenUrl !== imgFallback) {
-        // Solo imagen
-        const img = document.createElement('img');
-        img.src = imagenUrl;
-        img.alt = titulo;
-        img.style.cssText = 'width:100%;max-height:360px;object-fit:cover;display:block;';
-        img.addEventListener('error', function() { this.style.display = 'none'; });
-        mediaZone.appendChild(img);
+    } else {
+        // Imagen (siempre mostrar, incluso si es fallback)
+        const imgEl = document.createElement('img');
+        imgEl.src = imagenUrl || imgFallback;
+        imgEl.alt = titulo;
+        imgEl.style.cssText = 'width:100%;max-height:400px;object-fit:cover;display:block;';
+        imgEl.addEventListener('error', function() { this.src = imgFallback; });
+        mediaZone.appendChild(imgEl);
     }
 
     // ── Contenido textual ──
     const content = document.createElement('div');
-    content.style.cssText = 'padding:18px 20px 20px;background:#1a1a1a;color:#f0f0f0;';
+    content.style.cssText = 'padding:20px 22px 24px;background:#1a1a1a;color:#f0f0f0;flex:1;';
 
     const badge = document.createElement('span');
-    badge.style.cssText = 'display:inline-block;background:#1877f2;color:#fff;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:10px;';
-    badge.textContent = videoUrl ? '▶ Video de Facebook' : 'Facebook';
+    badge.style.cssText = 'display:inline-block;background:#1877f2;color:#fff;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:12px;';
+    badge.textContent = videoUrl ? '▶ Video de Facebook' : '📘 Facebook';
 
-    const h2 = document.createElement('h2');
-    h2.style.cssText = 'font-size:1rem;font-weight:700;color:#fff;margin:0 0 8px 0;line-height:1.45;';
-    // Usar el texto de la publicación como título si está disponible
-    h2.textContent = cuerpo ? cuerpo.substring(0, 120) + (cuerpo.length > 120 ? '...' : '') : titulo;
-
+    // Texto completo de la publicación sin truncar
     const desc = document.createElement('p');
-    desc.style.cssText = 'font-size:0.88rem;color:#ccc;line-height:1.6;margin:0 0 16px 0;max-height:100px;overflow-y:auto;';
-    desc.textContent = cuerpo || '';
+    desc.style.cssText = 'font-size:0.95rem;color:#e0e0e0;line-height:1.7;margin:0;white-space:pre-wrap;word-break:break-word;';
+    desc.textContent = cuerpo || titulo;
 
     content.appendChild(badge);
-    content.appendChild(h2);
-    if (cuerpo && cuerpo.length > 120) content.appendChild(desc);
+    content.appendChild(desc);
 
     // Botón cerrar
     const btnClose = document.createElement('button');
     btnClose.textContent = '✕';
-    btnClose.style.cssText = 'position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;z-index:10;';
+    btnClose.style.cssText = 'position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;z-index:10;line-height:1;';
     btnClose.addEventListener('click', () => overlay.remove());
 
     modal.appendChild(mediaZone);
