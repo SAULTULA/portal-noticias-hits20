@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hits20-cache-v2';
+const CACHE_NAME = 'hits20-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,6 +9,7 @@ const urlsToCache = [
 
 // Instalación del Service Worker
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Fuerza a que este SW se active inmediatamente
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -28,16 +29,29 @@ self.addEventListener('activate', event => {
           }
         })
       );
+    }).then(() => {
+      return clients.claim(); // Toma control de los clientes abiertos inmediatamente
     })
   );
 });
 
-// Interceptación de peticiones para funcionamiento offline
+// Interceptación de peticiones (Network First con fallback a Caché)
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
+    fetch(event.request)
+      .then(networkResponse => {
+        // Si la red funciona, clonamos la respuesta y actualizamos la caché en el fondo
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Si no hay red (offline), servimos desde la caché
+        return caches.match(event.request);
       })
   );
 });
