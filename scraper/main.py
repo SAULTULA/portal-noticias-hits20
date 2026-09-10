@@ -120,29 +120,48 @@ def scrape_facebook_apify():
             post_id = (item.get("postId") or f"fb_post_{idx}").replace("/", "_")
             text    = item.get("text") or item.get("postText") or ""
 
-            # ── Detectar imagen ──
-            fb_img_url = (
-                item.get("image")
-                or (item.get("images") or [None])[0]
-                or item.get("full_picture")
-                or ""
-            )
+            # ── Detectar imagen y video buscando en el array 'media' o propiedades directas ──
+            fb_img_url = ""
+            fb_video_url = ""
 
-            # ── Detectar video ──
-            fb_video_url = (
-                item.get("videoUrl")
-                or (item.get("video") or {}).get("url", "")
-                or ""
-            )
-            is_video = bool(fb_video_url)
-
-            if is_video and not fb_img_url:
-                # Usar el thumbnail del video como imagen de portada
+            # 1) Extraer desde el nuevo formato de Apify ("media": [...])
+            media_list = item.get("media", [])
+            if media_list and isinstance(media_list, list) and len(media_list) > 0:
+                first_media = media_list[0]
+                
+                # Imagen
                 fb_img_url = (
-                    item.get("videoThumbnail")
-                    or (item.get("video") or {}).get("thumbnail", "")
+                    first_media.get("thumbnail")
+                    or (first_media.get("photo_image") or {}).get("uri")
                     or ""
                 )
+                
+                # Video (si existe)
+                fb_video_url = (
+                    first_media.get("videoUrl")
+                    or (first_media.get("video") or {}).get("url")
+                    or ""
+                )
+
+            # 2) Fallback a propiedades legacy
+            if not fb_img_url:
+                fb_img_url = (
+                    item.get("image")
+                    or (item.get("images") or [None])[0]
+                    or item.get("full_picture")
+                    or item.get("videoThumbnail")
+                    or (item.get("video") or {}).get("thumbnail")
+                    or ""
+                )
+                
+            if not fb_video_url:
+                fb_video_url = (
+                    item.get("videoUrl")
+                    or (item.get("video") or {}).get("url")
+                    or ""
+                )
+
+            is_video = bool(fb_video_url)
 
             media_type  = "video" if is_video else "image"
             created_at  = item.get("time") or datetime.utcnow().isoformat()
