@@ -1,12 +1,12 @@
 import os
-import json
-import subprocess
-import tempfile
+import re
 import urllib.request
-from datetime import datetime
+import tempfile
+from datetime import datetime, timezone
+from xml.etree import ElementTree as ET
 from supabase import create_client, Client
 
-# Configuración Supabase
+# ── Configuración ────────────────────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
@@ -17,129 +17,145 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 BUCKET_NAME = "facebook_media"
 
-def upload_to_supabase(file_path, dest_path, content_type):
-    """Sube un archivo local a Supabase Storage y retorna la URL pública"""
-    with open(file_path, "rb") as f:
-        supabase.storage.from_(BUCKET_NAME).upload(
-            file=f,
-            path=dest_path,
-            file_options={"content-type": content_type}
-        )
-    return f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{dest_path}"
+# Mapeo: page_url en Supabase → URL del feed RSS que la representa
+# Agregá tantas filas como páginas tengas en fb_pages_mapping
+RSS_MAP = {
+    "https://www.facebook.com/hits20radio/": "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml",
+}
 
-def get_posts_from_page(page_url):
-    """Usa yt-dlp para extraer las últimas publicaciones de la página"""
-    print(f"Scrapeando página: {page_url}")
-    # Nota: yt-dlp puede requerir cookies si Facebook bloquea la IP de GitHub Actions.
-    # Comando: yt-dlp --dump-json --playlist-end 3 <URL>
-    command = [
-        "yt-dlp",
-        "--dump-json",
-        "--playlist-end", "3",
-        "--ignore-errors",
-        "--no-warnings",
-        page_url
-    ]
-    
-    posts = []
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def extraer_imagen_de_descripcion(descripcion: str) -> str:
+    """Busca el primer <img src="..."> dentro del HTML del campo description."""
+    match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', descripcion or "")
+    return match.group(1) if match else ""
+
+
+def extraer_texto_plano(html: str) -> str:
+    """Elimina etiquetas HTML y devuelve texto limpio."""
+    return re.sub(r"<[^>]+>", "", html or "").strip()
+
+
+def upload_imagen_to_supabase(img_url: str, post_id: str) -> str:
+    """Descarga una imagen y la sube a Supabase Storage. Retorna URL pública."""
     try:
-        result = subprocess.run(command, capture_output=True, text=True)
-        for line in result.stdout.split('\n'):
-            if not line.strip():
-                continue
-            try:
-                data = json.loads(line)
-                posts.append(data)
-            except json.JSONDecodeError:
-                continue
+        filename = f"{post_id}.jpg"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            local_path = os.path.join(tmpdir, filename)
+            req = urllib.request.Request(img_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp, open(local_path, "wb") as f:
+                f.write(resp.read())
+            dest = f"images/{filename}"
+            with open(local_path, "rb") as f:
+                supabase.storage.from_(BUCKET_NAME).upload(
+                    file=f,
+                    path=dest,
+                    file_options={"content-type": "image/jpeg", "upsert": "true"},
+                )
+            return f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{dest}"
     except Exception as e:
-        print(f"Error ejecutando yt-dlp en {page_url}: {e}")
-        
-    return posts
+        print(f"  [warn] No se pudo subir imagen: {e}")
+        return img_url  # Devuelve la URL original como fallback
 
-def process_page(mapping):
-    page_url = mapping['page_url']
-    target_website = mapping['target_website']
-    
-    posts = get_posts_from_page(page_url)
-    
-    for post in posts:
-        post_id = post.get('id')
-        if not post_id:
+
+def parsear_fecha(fecha_str: str) -> str:
+    """Convierte fecha RFC-822 de RSS a ISO-8601 para Supabase."""
+    try:
+        from email.utils import parsedate_to_datetime
+        return parsedate_to_datetime(fecha_str).astimezone(timezone.utc).isoformat()
+    except Exception:
+        return datetime.now(timezone.utc).isoformat()
+
+
+# ── Lógica principal ──────────────────────────────────────────────────────────
+def procesar_feed(page_url: str, rss_url: str, target_website: str):
+    print(f"  Leyendo feed RSS: {rss_url}")
+    try:
+        req = urllib.request.Request(rss_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            xml_content = resp.read()
+    except Exception as e:
+        print(f"  [error] No se pudo descargar el feed: {e}")
+        return
+
+    try:
+        root = ET.fromstring(xml_content)
+    except ET.ParseError as e:
+        print(f"  [error] XML inválido: {e}")
+        return
+
+    items = root.findall(".//item")
+    print(f"  Se encontraron {len(items)} ítems en el feed.")
+
+    for item in items[:10]:  # Procesar máximo 10 por ciclo
+        guid = (item.findtext("guid") or item.findtext("link") or "").strip()
+        if not guid:
             continue
-            
-        # Verificar si el post ya existe en Supabase
-        existing = supabase.table("fb_posts").select("id").eq("post_id", post_id).execute()
+
+        # Verificar si ya existe
+        existing = supabase.table("fb_posts").select("id").eq("post_id", guid).execute()
         if existing.data:
-            print(f"Post {post_id} ya existe. Saltando...")
+            print(f"  Post {guid[:60]}... ya existe. Saltando.")
             continue
-            
-        print(f"Procesando nuevo post: {post_id}")
-        
-        titulo = post.get('title', 'Sin título')
-        cuerpo = post.get('description', '')
-        media_url = ""
+
+        titulo_raw  = item.findtext("title") or "Publicación de Facebook"
+        fecha_raw   = item.findtext("pubDate") or ""
+        desc_raw    = item.findtext("description") or ""
+        enlace      = item.findtext("link") or page_url
+
+        titulo = extraer_texto_plano(titulo_raw)[:255]
+        cuerpo = extraer_texto_plano(desc_raw)
+        fecha  = parsear_fecha(fecha_raw)
+
+        # Intentar extraer imagen del campo description
+        img_url_original = extraer_imagen_de_descripcion(desc_raw)
+
+        media_url  = ""
         media_type = "none"
-        
-        # Procesar media
-        # yt-dlp devuelve 'url' para videos, o 'thumbnails'
-        is_video = post.get('vcodec') != 'none' and post.get('vcodec') is not None
-        
-        try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                if is_video:
-                    media_type = "video"
-                    filename = f"{post_id}.mp4"
-                    temp_path = os.path.join(temp_dir, filename)
-                    # Descargar video
-                    subprocess.run(["yt-dlp", "-o", temp_path, post.get('webpage_url', '')])
-                    if os.path.exists(temp_path):
-                        dest_path = f"videos/{filename}"
-                        media_url = upload_to_supabase(temp_path, dest_path, "video/mp4")
-                else:
-                    # Intentar obtener la mejor imagen
-                    thumbnails = post.get('thumbnails', [])
-                    if thumbnails:
-                        best_thumb = thumbnails[-1].get('url')
-                        if best_thumb:
-                            media_type = "image"
-                            filename = f"{post_id}.jpg"
-                            temp_path = os.path.join(temp_dir, filename)
-                            urllib.request.urlretrieve(best_thumb, temp_path)
-                            dest_path = f"images/{filename}"
-                            media_url = upload_to_supabase(temp_path, dest_path, "image/jpeg")
-        except Exception as e:
-            print(f"Error procesando media para {post_id}: {e}")
-            
-        # Insertar en base de datos
+
+        if img_url_original:
+            media_type = "image"
+            post_slug  = re.sub(r"[^a-zA-Z0-9]", "_", guid)[-60:]
+            media_url  = upload_imagen_to_supabase(img_url_original, post_slug)
+
         supabase.table("fb_posts").insert({
-            "page_url": page_url,
-            "post_id": post_id,
-            "titulo": titulo[:255] if titulo else "",
-            "cuerpo": cuerpo,
-            "media_url": media_url,
-            "media_type": media_type,
-            "target_website": target_website,
-            "fecha_publicacion": datetime.utcfromtimestamp(post.get('timestamp', datetime.utcnow().timestamp())).isoformat()
+            "page_url":          page_url,
+            "post_id":           guid,
+            "titulo":            titulo,
+            "cuerpo":            cuerpo,
+            "media_url":         media_url,
+            "media_type":        media_type,
+            "target_website":    target_website,
+            "fecha_publicacion": fecha,
         }).execute()
-        print(f"Post {post_id} insertado correctamente.")
+
+        print(f"  ✓ Post insertado: {titulo[:70]}")
+
 
 def main():
-    print("Iniciando scraper...")
-    # 1. Obtener páginas a procesar desde Supabase
+    print("Iniciando scraper (modo RSS)...")
     response = supabase.table("fb_pages_mapping").select("*").execute()
     mappings = response.data
-    
+
     if not mappings:
-        print("No se encontraron páginas configuradas en fb_pages_mapping.")
+        print("No se encontraron páginas en fb_pages_mapping.")
         return
-        
-    print(f"Se encontraron {len(mappings)} páginas para procesar.")
-    
+
+    print(f"Se encontraron {len(mappings)} página(s) para procesar.")
+
     for mapping in mappings:
-        process_page(mapping)
-        
-    print("Scraping finalizado.")
+        page_url       = mapping["page_url"]
+        target_website = mapping.get("target_website", "portal_hits20")
+        rss_url        = RSS_MAP.get(page_url)
+
+        if not rss_url:
+            print(f"[warn] No hay RSS configurado para: {page_url}")
+            continue
+
+        print(f"\nProcesando: {page_url}")
+        procesar_feed(page_url, rss_url, target_website)
+
+    print("\nScraping finalizado.")
+
 
 if __name__ == "__main__":
     main()

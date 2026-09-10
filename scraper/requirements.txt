@@ -1,4 +1,1 @@
-yt-dlp
-supabase
-requests
-beautifulsoup4
+supabase==2.10.0
