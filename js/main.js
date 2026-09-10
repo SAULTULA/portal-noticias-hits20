@@ -271,23 +271,54 @@ async function cargarDatosSecundarios() {
             if (data.noticias || data.minuto1) {
                 renderizarMinutoUno(data.noticias || data.minuto1);
             }
-            if (data.facebook) {
-                // Mapear campos del Apps Script al formato que espera renderizarFacebook
-                const posts = data.facebook.map(f => ({
-                    titulo:            f.titulo || 'Publicación de Facebook',
-                    enlace:            f.enlace || '#',
-                    fecha_publicacion: f.fecha  || '',
-                    imagen:            f.imagen || imgFallback,
-                    media_type:        'image',
-                }));
-                renderizarFacebook(posts);
-            }
             if (data.publicidades) {
                 renderizarPublicidades(data.publicidades);
             }
         }
     } catch (err) {
-        console.error("Error al cargar datos secundarios:", err);
+        console.error("Error al cargar datos secundarios (Minuto 1 / Publicidades):", err);
+    }
+
+    // 2. Cargar Facebook desde Supabase
+    cargarFacebookDesdeSupabase();
+}
+
+async function cargarFacebookDesdeSupabase() {
+    // REEMPLAZAR AQUÍ CON TU URL Y ANON KEY DE SUPABASE
+    const SUPABASE_URL = 'https://ugbwqusesrygfhkckncr.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_ryxtditdrjjRaHijZwc2Zw_07i9H8Ar'; // Clave pública
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/fb_posts?page_url=eq.https://www.facebook.com/hits20radio/&order=fecha_publicacion.desc&limit=3`, {
+            method: 'GET',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error de red: ${response.status}`);
+        }
+
+        const fbPosts = await response.json();
+
+        if (fbPosts && fbPosts.length > 0) {
+            const postsFormateados = fbPosts.map(f => ({
+                titulo:            f.titulo || 'Publicación de Facebook',
+                enlace:            f.media_url || f.post_id || '#',
+                fecha_publicacion: f.fecha_publicacion || '',
+                imagen:            f.media_url || imgFallback,
+                cuerpo:            f.cuerpo || '',
+                media_type:        f.media_type || 'image',
+            }));
+            renderizarFacebook(postsFormateados);
+        } else {
+            console.log("No se encontraron publicaciones de Facebook en Supabase.");
+        }
+    } catch (err) {
+        console.error("Error al cargar Facebook desde Supabase:", err);
     }
 }
 
