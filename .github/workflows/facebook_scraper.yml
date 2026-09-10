@@ -25,4 +25,5 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
         run: python scraper/main.py
