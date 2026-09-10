@@ -9,10 +9,9 @@ const imgFallback = "logo.png";
 
 let todasLasNoticias = [];
 
-// Inicializar Supabase (se hará de forma lazy para evitar crasheos si el SDK no carga)
-let supabaseClient = null;
-const supabaseUrl = 'https://ugbwqusesrygfhkckncr.supabase.co';
-const supabaseKey = 'sb_publishable_ryxtditdrjjRaHijZwc2Zw_07i9H8Ar';
+// Feed RSS de Facebook (leído directamente desde el navegador del visitante)
+const urlRssFacebook = 'https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml';
+const CORS_PROXY = 'https://api.allorigins.win/get?url=';
 
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -282,42 +281,59 @@ async function cargarDatosSecundarios() {
         console.error("Error al cargar datos secundarios:", err);
     }
     
-    // Cargar Facebook desde Supabase
-    cargarFacebookDesdeSupabase();
+    // Cargar Facebook desde RSS (lectura directa en el navegador)
+    cargarFacebookDesdeRSS();
 }
 
-async function cargarFacebookDesdeSupabase() {
+async function cargarFacebookDesdeRSS() {
+    const contenedor = document.getElementById('grid-facebook');
     try {
-        if (!window.supabase) {
-            console.error("SDK de Supabase no cargado.");
-            return;
-        }
-        
-        if (!supabaseClient) {
-            supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-        }
+        const proxyUrl = CORS_PROXY + encodeURIComponent(urlRssFacebook);
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        const { data, error } = await supabaseClient
-            .from('fb_posts')
-            .select('*')
-            .order('fecha_publicacion', { ascending: false })
-            .limit(3);
-            
-        if (error) throw error;
-        
-        renderizarFacebook(data);
-        
-        // Suscripción Realtime para actualizar automáticamente
-        supabaseClient.channel('public:fb_posts')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fb_posts' }, (payload) => {
-                console.log('Nuevo post de Facebook recibido!', payload);
-                // Volver a cargar los últimos 3 para asegurar el orden correcto
-                cargarFacebookDesdeSupabase();
-            })
-            .subscribe();
-            
+        const json = await response.json();
+        const xmlText = json.contents;
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        const items = Array.from(xmlDoc.querySelectorAll('item')).slice(0, 3);
+
+        if (!items.length) throw new Error('Sin ítems en el feed');
+
+        const posts = items.map(item => {
+            const enlace = item.querySelector('link')?.textContent?.trim()
+                || item.querySelector('guid')?.textContent?.trim() || '#';
+            const descripcionHtml = item.querySelector('description')?.textContent || '';
+
+            // Extraer imagen del HTML de la descripción
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = descripcionHtml;
+            const imgTag = tempDiv.querySelector('img');
+            const imagenUrl = imgTag ? imgTag.src : imgFallback;
+
+            const textoPlano = tempDiv.textContent?.trim() || '';
+
+            return {
+                titulo:            item.querySelector('title')?.textContent?.trim() || 'Publicación de Facebook',
+                enlace,
+                fecha_publicacion: item.querySelector('pubDate')?.textContent?.trim() || '',
+                imagen:            imagenUrl,
+                cuerpo:            textoPlano,
+                media_type:        'image',
+            };
+        });
+
+        renderizarFacebook(posts);
+
     } catch (err) {
-        console.error('Error fetching Facebook posts from Supabase:', err);
+        console.error('Error cargando feed RSS de Facebook:', err);
+        if (contenedor) {
+            contenedor.innerHTML = '';
+            const msg = document.createElement('p');
+            msg.style.cssText = 'color:#666;font-size:0.9rem;';
+            msg.textContent = 'No se pudieron cargar las publicaciones de Facebook.';
+            contenedor.appendChild(msg);
+        }
     }
 }
 
