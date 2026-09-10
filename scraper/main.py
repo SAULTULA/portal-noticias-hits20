@@ -32,8 +32,10 @@ HEADERS = {
 }
 
 # ──────────────────────────────────────────────────────────────
-#  Descarga un archivo (imagen o video) y lo sube a Supabase
-#  Storage. Devuelve la URL pública o "" si falla.
+#  Intenta descargar el archivo y subirlo a Supabase Storage.
+#  Si falla (Facebook bloquea downloads desde servidores),
+#  devuelve la URL original de Facebook como fallback.
+#  Los navegadores SÍ pueden cargar esas URLs directamente.
 # ──────────────────────────────────────────────────────────────
 def subir_a_storage(url_origen: str, nombre_archivo: str) -> str:
     if not url_origen:
@@ -41,18 +43,23 @@ def subir_a_storage(url_origen: str, nombre_archivo: str) -> str:
     try:
         r = requests.get(url_origen, headers=HEADERS, timeout=60, stream=True)
         if r.status_code != 200:
-            print(f"  [storage] HTTP {r.status_code} descargando {url_origen[:70]}")
-            return ""
+            print(f"  [storage] HTTP {r.status_code} - usando URL directa como fallback")
+            return url_origen  # Devolver URL de FB directamente
 
         content_type = r.headers.get("Content-Type", "application/octet-stream")
 
         # Verificar tamaño para videos (evitar archivos enormes)
         content_length = int(r.headers.get("Content-Length", 0))
         if content_length > MAX_VIDEO_MB * 1024 * 1024:
-            print(f"  [storage] Video demasiado grande ({content_length/1024/1024:.1f} MB), se omite.")
-            return ""
+            print(f"  [storage] Video demasiado grande ({content_length/1024/1024:.1f} MB), usando URL directa")
+            return url_origen  # Devolver URL de FB directamente
 
         file_bytes = r.content
+
+        # Verificar que realmente descargamos una imagen/video (no una página de error)
+        if len(file_bytes) < 1000:
+            print(f"  [storage] Respuesta demasiado pequeña ({len(file_bytes)} bytes), puede ser error de FB")
+            return url_origen
 
         supabase.storage.from_(STORAGE_BUCKET).upload(
             path=nombre_archivo,
@@ -61,12 +68,12 @@ def subir_a_storage(url_origen: str, nombre_archivo: str) -> str:
         )
 
         public_url = f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}/{nombre_archivo}"
-        print(f"  [storage] ✓ Subido: {public_url[:80]}")
+        print(f"  [storage] ✓ Subido a Supabase: {public_url[:80]}")
         return public_url
 
     except Exception as e:
-        print(f"  [storage] Error: {e}")
-        return ""
+        print(f"  [storage] Error al subir, usando URL directa: {e}")
+        return url_origen  # Fallback: URL de Facebook CDN
 
 
 def scrape_facebook_apify():
