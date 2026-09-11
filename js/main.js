@@ -312,6 +312,8 @@ async function cargarFacebookDesdeSupabase() {
                 imagen:            f.media_url || imgFallback,
                 cuerpo:            f.cuerpo || '',
                 media_type:        f.media_type || 'image',
+                video_url:         f.video_url || '',
+                post_id:           f.post_id || '',
             }));
             renderizarFacebook(postsFormateados);
         } else {
@@ -431,7 +433,7 @@ function renderizarFacebook(data) {
         imageBox.className = 'card-image-box';
         
         // Si es video, mostrar play-icon sobre el thumbnail
-        if (mediaType === 'video' && videoUrl) {
+        if (mediaType === 'video') {
             imageBox.style.position = 'relative';
             const playIcon = document.createElement('div');
             playIcon.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,0.6);border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none;';
@@ -504,57 +506,30 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb, media
 
     // ── Zona de media ──
     const mediaZone = document.createElement('div');
-    mediaZone.style.cssText = 'width:100%;background:#000;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center;';
+    mediaZone.style.cssText = 'width:100%;background:#000;flex-shrink:0;position:relative;';
 
-    // Función auxiliar para renderizar el iframe alternativo si el video falla
-    const renderIframeFbAlternativo = () => {
-        mediaZone.innerHTML = '';
-        
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(enlaceFb)}&show_text=false&width=auto`;
-        iframe.style.cssText = 'width:100%; height:400px; border:none; overflow:hidden; background:#000;';
-        iframe.scrolling = "no";
-        iframe.frameBorder = "0";
-        iframe.allowFullscreen = true;
-        iframe.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share";
-        
-        mediaZone.appendChild(iframe);
-        
-        // Botón superpuesto "Ver Video Original"
-        const btnVerEnFb = document.createElement('a');
-        btnVerEnFb.href = enlaceFb;
-        btnVerEnFb.target = '_blank';
-        btnVerEnFb.rel = 'noopener noreferrer';
-        btnVerEnFb.textContent = 'Ver Video Original ↗';
-        btnVerEnFb.style.cssText = 'position:absolute; bottom:15px; right:15px; background:rgba(24,119,242,0.9); color:#fff; padding:8px 14px; border-radius:6px; font-size:0.85rem; font-weight:bold; text-decoration:none; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.3);';
-        mediaZone.appendChild(btnVerEnFb);
-    };
+    // Determinar si es video: tiene video en Supabase, o el scraper lo marcó como video, 
+    // o tiene videoUrl (aunque sea de FB CDN)
+    const tieneVideoSupabase = videoUrl && videoUrl.includes('supabase.co');
+    const esVideo = tieneVideoSupabase || mediaType === 'video' || (videoUrl && videoUrl !== '');
 
-    if (videoUrl && videoUrl.includes('supabase.co')) {
-        // Video nativo alojado exitosamente en tu Supabase
+    if (tieneVideoSupabase) {
+        // ── Video alojado en Supabase: reproductor nativo ──
         const video = document.createElement('video');
         video.src = videoUrl;
         video.controls = true;
         video.autoplay = false;
         video.style.cssText = 'width:100%;max-height:420px;display:block;background:#000;';
         video.poster = imagenUrl || '';
-        
-        // Si el video de Supabase falla al cargar (raro, pero posible), mostramos el fallback
-        video.onerror = renderIframeFbAlternativo;
-        
+        // Si falla el video de Supabase, mostrar imagen + botón para ir a FB
+        video.addEventListener('error', () => {
+            mediaZone.textContent = '';
+            renderImagenConEnlaceFb(mediaZone, imagenUrl, enlaceFb, titulo, true);
+        });
         mediaZone.appendChild(video);
-    } else if (videoUrl || mediaType === 'video') {
-        // Es un video pero la URL es externa (CDN de FB caducable) o no vino la URL del video. 
-        // Renderizamos directamente el fallback para evitar la imagen estática.
-        renderIframeFbAlternativo();
     } else {
-        // Imagen (siempre mostrar, incluso si es fallback)
-        const imgEl = document.createElement('img');
-        imgEl.src = imagenUrl || imgFallback;
-        imgEl.alt = titulo;
-        imgEl.style.cssText = 'width:100%;max-height:400px;object-fit:cover;display:block;';
-        imgEl.addEventListener('error', function() { this.src = imgFallback; });
-        mediaZone.appendChild(imgEl);
+        // ── Sin video local: mostrar imagen (con botón de play si es video) ──
+        renderImagenConEnlaceFb(mediaZone, imagenUrl, enlaceFb, titulo, esVideo);
     }
 
     // ── Contenido textual ──
@@ -563,7 +538,7 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb, media
 
     const badge = document.createElement('span');
     badge.style.cssText = 'display:inline-block;background:#1877f2;color:#fff;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:12px;';
-    badge.textContent = (mediaType === 'video') ? '▶ Video de Facebook' : '📘 Facebook';
+    badge.textContent = esVideo ? '▶ Video de Facebook' : '📘 Facebook';
 
     // Texto completo de la publicación sin truncar
     const desc = document.createElement('p');
@@ -572,6 +547,20 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb, media
 
     content.appendChild(badge);
     content.appendChild(desc);
+
+    // Botón para ver en Facebook (siempre presente en la zona de texto)
+    if (enlaceFb && enlaceFb !== '#') {
+        const btnVerFb = document.createElement('a');
+        btnVerFb.href = enlaceFb;
+        btnVerFb.target = '_blank';
+        btnVerFb.rel = 'noopener noreferrer';
+        btnVerFb.textContent = esVideo ? '▶ Ver video en Facebook' : '↗ Ver publicación en Facebook';
+        btnVerFb.style.cssText = 'display:inline-block;margin-top:16px;padding:10px 20px;background:#1877f2;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.9rem;transition:background 0.2s;';
+        btnVerFb.addEventListener('mouseenter', () => { btnVerFb.style.background = '#1565c0'; });
+        btnVerFb.addEventListener('mouseleave', () => { btnVerFb.style.background = '#1877f2'; });
+        btnVerFb.addEventListener('click', (e) => e.stopPropagation());
+        content.appendChild(btnVerFb);
+    }
 
     // Botón cerrar
     const btnClose = document.createElement('button');
@@ -586,6 +575,70 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb, media
 
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     document.body.appendChild(overlay);
+}
+
+/**
+ * Renderiza la imagen de la publicación de Facebook dentro del contenedor.
+ * Si esVideo=true, superpone un botón de play grande y clicable que abre el post en Facebook.
+ * Si esVideo=false, simplemente muestra la imagen.
+ */
+function renderImagenConEnlaceFb(contenedor, imagenUrl, enlaceFb, titulo, esVideo) {
+    // Imagen de fondo
+    const img = document.createElement('img');
+    img.src = imagenUrl || imgFallback;
+    img.alt = titulo || 'Publicación de Facebook';
+    img.style.cssText = 'width:100%;max-height:400px;object-fit:cover;display:block;';
+    img.addEventListener('error', function() { this.src = imgFallback; });
+    contenedor.appendChild(img);
+
+    if (esVideo && enlaceFb && enlaceFb !== '#') {
+        // ── Overlay oscuro sobre la imagen ──
+        const darkOverlay = document.createElement('div');
+        darkOverlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.35);pointer-events:none;';
+        contenedor.appendChild(darkOverlay);
+
+        // ── Botón de PLAY grande circular ──
+        const playBtn = document.createElement('a');
+        playBtn.href = enlaceFb;
+        playBtn.target = '_blank';
+        playBtn.rel = 'noopener noreferrer';
+        playBtn.title = 'Reproducir video en Facebook';
+        playBtn.style.cssText = [
+            'position:absolute',
+            'top:50%',
+            'left:50%',
+            'transform:translate(-50%,-50%)',
+            'width:72px',
+            'height:72px',
+            'background:rgba(24,119,242,0.9)',
+            'border-radius:50%',
+            'display:flex',
+            'align-items:center',
+            'justify-content:center',
+            'cursor:pointer',
+            'z-index:5',
+            'box-shadow:0 4px 20px rgba(0,0,0,0.5)',
+            'transition:transform 0.2s ease, background 0.2s ease',
+            'text-decoration:none'
+        ].join(';');
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="white" width="32" height="32"><path d="M8 5v14l11-7z"/></svg>';
+        playBtn.addEventListener('mouseenter', () => {
+            playBtn.style.transform = 'translate(-50%,-50%) scale(1.12)';
+            playBtn.style.background = 'rgba(24,119,242,1)';
+        });
+        playBtn.addEventListener('mouseleave', () => {
+            playBtn.style.transform = 'translate(-50%,-50%) scale(1)';
+            playBtn.style.background = 'rgba(24,119,242,0.9)';
+        });
+        playBtn.addEventListener('click', (e) => e.stopPropagation());
+        contenedor.appendChild(playBtn);
+
+        // ── Etiqueta "Ver en Facebook" debajo del play ──
+        const label = document.createElement('span');
+        label.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;padding:5px 14px;border-radius:20px;font-size:0.75rem;font-weight:600;pointer-events:none;white-space:nowrap;';
+        label.textContent = '▶ Toca para ver el video en Facebook';
+        contenedor.appendChild(label);
+    }
 }
 
 
