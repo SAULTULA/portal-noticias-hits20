@@ -472,14 +472,14 @@ function renderizarFacebook(data) {
 
         // Al hacer click → abrir modal con video o imagen nativa
         card.addEventListener('click', () => {
-            abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlace);
+            abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlace, mediaType);
         });
 
         contenedor.appendChild(card);
     });
 }
 
-function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb) {
+function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb, mediaType = 'image') {
     const existing = document.getElementById('fb-modal-overlay');
     if (existing) existing.remove();
 
@@ -504,17 +504,49 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb) {
 
     // ── Zona de media ──
     const mediaZone = document.createElement('div');
-    mediaZone.style.cssText = 'width:100%;background:#000;flex-shrink:0;';
+    mediaZone.style.cssText = 'width:100%;background:#000;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center;';
 
-    if (videoUrl) {
-        // Video nativo alojado en Supabase
+    // Función auxiliar para renderizar el iframe alternativo si el video falla
+    const renderIframeFbAlternativo = () => {
+        mediaZone.innerHTML = '';
+        
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(enlaceFb)}&show_text=false&width=auto`;
+        iframe.style.cssText = 'width:100%; height:400px; border:none; overflow:hidden; background:#000;';
+        iframe.scrolling = "no";
+        iframe.frameBorder = "0";
+        iframe.allowFullscreen = true;
+        iframe.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share";
+        
+        mediaZone.appendChild(iframe);
+        
+        // Botón superpuesto "Ver Video Original"
+        const btnVerEnFb = document.createElement('a');
+        btnVerEnFb.href = enlaceFb;
+        btnVerEnFb.target = '_blank';
+        btnVerEnFb.rel = 'noopener noreferrer';
+        btnVerEnFb.textContent = 'Ver Video Original ↗';
+        btnVerEnFb.style.cssText = 'position:absolute; bottom:15px; right:15px; background:rgba(24,119,242,0.9); color:#fff; padding:8px 14px; border-radius:6px; font-size:0.85rem; font-weight:bold; text-decoration:none; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.3);';
+        mediaZone.appendChild(btnVerEnFb);
+    };
+
+    if (videoUrl && videoUrl.includes('supabase.co')) {
+        // Video nativo alojado exitosamente en tu Supabase
         const video = document.createElement('video');
         video.src = videoUrl;
         video.controls = true;
         video.autoplay = false;
         video.style.cssText = 'width:100%;max-height:420px;display:block;background:#000;';
         video.poster = imagenUrl || '';
+        
+        // Si el video de Supabase falla al cargar (raro, pero posible), mostramos el fallback
+        video.onerror = renderIframeFbAlternativo;
+        
         mediaZone.appendChild(video);
+    } else if (videoUrl || mediaType === 'video') {
+        // Es un video pero la URL es externa (CDN de FB caducable) o no vino la URL del video. 
+        // Renderizamos directamente el fallback para evitar la imagen estática.
+        renderIframeFbAlternativo();
     } else {
         // Imagen (siempre mostrar, incluso si es fallback)
         const imgEl = document.createElement('img');
@@ -531,7 +563,7 @@ function abrirFacebookModal(titulo, cuerpo, imagenUrl, videoUrl, enlaceFb) {
 
     const badge = document.createElement('span');
     badge.style.cssText = 'display:inline-block;background:#1877f2;color:#fff;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:12px;';
-    badge.textContent = videoUrl ? '▶ Video de Facebook' : '📘 Facebook';
+    badge.textContent = (mediaType === 'video') ? '▶ Video de Facebook' : '📘 Facebook';
 
     // Texto completo de la publicación sin truncar
     const desc = document.createElement('p');
