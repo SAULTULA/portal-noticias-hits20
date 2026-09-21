@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hits20-cache-v3';
+const CACHE_NAME = 'hits20-cache-v4';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -37,6 +37,13 @@ self.addEventListener('activate', event => {
 
 // Interceptación de peticiones (Network First con fallback a Caché)
 self.addEventListener('fetch', event => {
+  const url = event.request.url;
+
+  // Bypass para el streaming de radio
+  if (url.includes('stream.radiosmundiales.com') || url.includes('/stream/')) {
+    return; // Permite que el navegador gestione la reproducción de audio sin pasar por fetch
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(networkResponse => {
