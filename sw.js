@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hits20-cache-v4';
+const CACHE_NAME = 'hits20-cache-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,7 +9,7 @@ const urlsToCache = [
 
 // Instalación del Service Worker
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Fuerza a que este SW se active inmediatamente
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -30,7 +30,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      return clients.claim(); // Toma control de los clientes abiertos inmediatamente
+      return clients.claim();
     })
   );
 });
@@ -39,16 +39,21 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  // Bypass para el streaming de radio
+  // 1. Bypass para el streaming de radio
   if (url.includes('stream.radiosmundiales.com') || url.includes('/stream/')) {
-    return; // Permite que el navegador gestione la reproducción de audio sin pasar por fetch
+    return;
   }
 
+  // 2. Manejo de peticiones HTTP/HTTPS generales
   event.respondWith(
     fetch(event.request)
       .then(networkResponse => {
-        // Si la red funciona, clonamos la respuesta y actualizamos la caché en el fondo
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        // Permitimos tipos 'basic' y 'cors' con estado exitoso (200)
+        if (
+          networkResponse && 
+          networkResponse.status === 200 && 
+          (networkResponse.type === 'basic' || networkResponse.type === 'cors')
+        ) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseToCache);
@@ -57,7 +62,7 @@ self.addEventListener('fetch', event => {
         return networkResponse;
       })
       .catch(() => {
-        // Si no hay red (offline), servimos desde la caché
+        // Fallback a la caché si no hay conexión a internet
         return caches.match(event.request);
       })
   );
