@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hits20-cache-v5';
+const CACHE_NAME = 'hits20-cache-v6';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -40,7 +40,7 @@ self.addEventListener('fetch', event => {
   const url = event.request.url;
 
   // 1. Bypass para el streaming de radio
-  if (url.includes('stream.radiosmundiales.com') || url.includes('/stream/')) {
+  if (url.includes('api.condoristream.com') || url.includes('/stream/')) {
     return;
   }
 

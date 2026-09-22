@@ -291,7 +291,7 @@
                 <div class="player-widget__bar"></div>
             </div>
             <audio id="audio-stream" class="player-widget__audio" controls autoplay>
-                <source src="https://stream.radiosmundiales.com/stream/claudio" type="audio/mpeg">
+                <source src="https://api.condoristream.com/stream/claudio" type="audio/mpeg">
                 Tu navegador no soporta el elemento de audio.
             </audio>
             <div class="player-widget__volume-control">
@@ -472,6 +472,14 @@
     <!-- PWA & SERVICE WORKER -->
     <script>
         if ('serviceWorker' in navigator) {
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    window.location.reload();
+                    refreshing = true;
+                }
+            });
+
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .catch(err => console.error('Error registrando Service Worker:', err));
