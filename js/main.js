@@ -7,6 +7,52 @@ const urlAppsScriptMinutoUno = "https://script.google.com/macros/s/AKfycbxs3faet
 // const urlRssFacebook = "https://rss.app/feeds/a0CU7nQs9g8nXGIV.xml";
 const imgFallback = "logo.png";
 
+/**
+ * Normaliza la URL de una imagen para asegurar que sea embebible en un <img>.
+ *
+ * Problemas conocidos que resuelve:
+ *  1. Google Drive (drive.google.com/uc?export=view&id=...)
+ *     → Falla por CORS/referrer. Se convierte al CDN públíco:
+ *        lh3.googleusercontent.com/d/FILE_ID
+ *
+ *  2. Facebook CDN (*.fbcdn.net / scontent.*)
+ *     → Hotlinking bloqueado + tokens de expiración (parámetro oe=).
+ *        No se pueden embeber en sitios externos. Se muestra el fallback
+ *        y se avisa en consola para que el admin actualice la imagen.
+ *
+ * @param {string} url - URL original de la imagen.
+ * @returns {string} URL segura para usar en src de <img>.
+ */
+function normalizarUrlImagen(url) {
+    if (!url) return imgFallback;
+
+    // ── Caso 1: Google Drive → convertir al CDN públíco de Google ──
+    if (url.includes('drive.google.com')) {
+        const driveMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (driveMatch) {
+            return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+        }
+    }
+
+    // ── Caso 2: lh3.googleusercontent.com (ya es CDN correcto) → pasar directo ──
+    if (url.includes('lh3.googleusercontent.com')) {
+        return url;
+    }
+
+    // ── Caso 3: Facebook CDN (bloqueado para hotlinking + tokens con vencimiento) ──
+    if (url.includes('fbcdn.net') || url.includes('scontent.')) {
+        console.warn(
+            '[Publicidad] URL de Facebook CDN detectada — no se puede embeber en sitios externos.\n' +
+            'Solución: en el panel de admin, editá la publicidad y subí la imagen usando '
+            + '"Archivo local".\nURL problemática:', url
+        );
+        return imgFallback;
+    }
+
+    // ── Default: devolver la URL sin modificar ──
+    return url;
+}
+
 let todasLasNoticias = [];
 
 
@@ -669,7 +715,8 @@ function renderizarPublicidades(publicidades) {
 
         // Slot con publicidad real
         const img = document.createElement('img');
-        img.src = pub.imagen || pub.Imagen || imgFallback;
+        // Normalizar la URL de la imagen (convierte Google Drive URLs al CDN de Google)
+        img.src = normalizarUrlImagen(pub.imagen || pub.Imagen || imgFallback);
         img.alt = pub.titulo || pub.Titulo || 'Publicidad';
         img.style.cssText = 'width: 100%; border-radius: 6px; object-fit: contain; max-height: 250px;';
         img.addEventListener('error', function () { this.src = imgFallback; });
