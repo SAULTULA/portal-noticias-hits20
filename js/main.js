@@ -691,7 +691,11 @@ function renderImagenConEnlaceFb(contenedor, imagenUrl, enlaceFb, titulo, esVide
 function renderizarPublicidades(publicidades) {
     const contenedor = document.getElementById('ads-container');
     if (!contenedor) return;
+
+    // Conservar la publicidad fija (300x300) al re-renderizar
+    const publicidadFija = contenedor.querySelector('.ad-static');
     contenedor.innerHTML = '';
+    if (publicidadFija) contenedor.appendChild(publicidadFija);
 
     const MAX_SLOTS = 5;
     const lista = (publicidades || []).slice(0, MAX_SLOTS);

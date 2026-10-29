@@ -83,8 +83,21 @@
             <span id="copiado-aviso" style="color: #27ae60; font-size: 0.8rem; display: none; margin-top: 5px;">¡Enlace copiado al portapapeles!</span>
         </div>
 
-        <!-- LISTADO DE GESTIÓN (ÚLTIMAS 2 NOTICIAS) -->
-        <h3 style="margin-top: 40px; color: #1a1a1a;">Últimas 2 Noticias Publicadas</h3>
+        <!-- LISTADO DE GESTIÓN -->
+        <h3 style="margin-top: 40px; color: #1a1a1a;">Noticias Publicadas</h3>
+
+        <!-- Buscador y paginación -->
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px;">
+            <input type="search" id="admin-buscar" placeholder="Buscar por título o categoría…"
+                   style="flex: 1 1 240px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <select id="admin-por-pagina" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <option value="20" selected>20 por página</option>
+                <option value="50">50 por página</option>
+                <option value="100">100 por página</option>
+            </select>
+            <span id="admin-contador" style="font-size: 0.85rem; color: #555;"></span>
+        </div>
+
         <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem;">
                 <thead>
@@ -97,6 +110,13 @@
                 </thead>
                 <tbody id="lista-admin-body"></tbody>
             </table>
+        </div>
+
+        <!-- Paginación -->
+        <div id="admin-paginacion" style="display: flex; gap: 12px; justify-content: center; align-items: center; margin-top: 15px;">
+            <button type="button" id="admin-prev" style="background: #333; color: #fff; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer;">← Anterior</button>
+            <span id="admin-pagina-info" style="font-size: 0.85rem; color: #555;"></span>
+            <button type="button" id="admin-next" style="background: #333; color: #fff; border: none; padding: 7px 14px; border-radius: 4px; cursor: pointer;">Siguiente →</button>
         </div>
         
         <div style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center;">
