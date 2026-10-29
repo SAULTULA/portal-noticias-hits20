@@ -397,11 +397,47 @@ body {
     background: #c9302c;
 }
 
+/* Banner publicitario 970x120 */
+.news-banner {
+    display: block;
+    width: 95%;
+    max-width: 1200px;
+    margin: 20px auto 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.news-banner img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
 /* Espacios Publicitarios / Flyers */
 .ads {
     display: flex;
     flex-direction: column;
     gap: 15px;
+}
+
+/* Publicidad fija de la barra lateral (300x300) */
+.ad-static {
+    background: #ffffff;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.ad-static img {
+    display: block;
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 6px;
 }
 
 .ad-slot {
@@ -843,6 +879,10 @@ body {
         width: 100% !important;
         padding: 0 12px !important;
         margin: 15px auto !important;
+    }
+    .news-banner {
+        width: calc(100% - 24px);
+        margin: 15px auto 0;
     }
     .sidebar {
         width: 100% !important;
