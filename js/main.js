@@ -75,6 +75,9 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 4. Modal de Admin Ads
     inicializarAdminAds();
+
+    // 5. Modal de Emisiones Especiales (Transmisión en Vivo)
+    inicializarModalEmisionesEspeciales();
 });
 
 // -------------------------------------------------------------
@@ -691,7 +694,11 @@ function renderImagenConEnlaceFb(contenedor, imagenUrl, enlaceFb, titulo, esVide
 function renderizarPublicidades(publicidades) {
     const contenedor = document.getElementById('ads-container');
     if (!contenedor) return;
+
+    // Conservar la publicidad fija (300x300) al re-renderizar
+    const publicidadFija = contenedor.querySelector('.ad-static');
     contenedor.innerHTML = '';
+    if (publicidadFija) contenedor.appendChild(publicidadFija);
 
     const MAX_SLOTS = 5;
     const lista = (publicidades || []).slice(0, MAX_SLOTS);
@@ -946,4 +953,108 @@ function inicializarAdminAds() {
             }
         });
     }
+}
+
+// -------------------------------------------------------------
+// 6. VENTANA EMERGENTE: EMISIONES ESPECIALES (TRANSMISIÓN EN VIVO)
+// -------------------------------------------------------------
+function abrirModalEmisionesEspeciales() {
+    const modal = document.getElementById('modal-emision-especial');
+    const iframe = document.getElementById('live-modal-iframe');
+    const loader = document.getElementById('live-modal-loader');
+    const btnCerrar = document.getElementById('btn-cerrar-live');
+
+    if (!modal || !iframe) return;
+
+    const streamUrl = iframe.getAttribute('data-src') || 'https://deportes-umber.vercel.app/';
+
+    modal.classList.add('live-modal--active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    if (loader) {
+        loader.classList.remove('live-modal__loader--hidden');
+    }
+
+    if (iframe.src !== streamUrl) {
+        iframe.src = streamUrl;
+    }
+
+    if (btnCerrar) {
+        btnCerrar.focus();
+    }
+}
+
+function cerrarModalEmisionesEspeciales() {
+    const modal = document.getElementById('modal-emision-especial');
+    const iframe = document.getElementById('live-modal-iframe');
+    const loader = document.getElementById('live-modal-loader');
+    const btnAbrir = document.getElementById('btn-emisiones-especiales');
+
+    if (!modal) return;
+
+    modal.classList.remove('live-modal--active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+
+    if (iframe) {
+        // Detener reproducción y evitar consumo de recursos en segundo plano
+        iframe.src = 'about:blank';
+    }
+
+    if (loader) {
+        loader.classList.remove('live-modal__loader--hidden');
+    }
+
+    if (btnAbrir) {
+        btnAbrir.focus();
+    }
+}
+
+function inicializarModalEmisionesEspeciales() {
+    const btnAbrir = document.getElementById('btn-emisiones-especiales');
+    const modal = document.getElementById('modal-emision-especial');
+    const btnCerrar = document.getElementById('btn-cerrar-live');
+    const backdrop = document.getElementById('live-modal-backdrop');
+    const btnRecargar = document.getElementById('btn-recargar-live');
+    const iframe = document.getElementById('live-modal-iframe');
+    const loader = document.getElementById('live-modal-loader');
+
+    if (!modal) return;
+
+    if (btnAbrir) {
+        btnAbrir.addEventListener('click', abrirModalEmisionesEspeciales);
+    }
+    if (btnCerrar) {
+        btnCerrar.addEventListener('click', cerrarModalEmisionesEspeciales);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', cerrarModalEmisionesEspeciales);
+    }
+    if (btnRecargar && iframe) {
+        btnRecargar.addEventListener('click', () => {
+            const streamUrl = iframe.getAttribute('data-src') || 'https://deportes-umber.vercel.app/';
+            if (loader) loader.classList.remove('live-modal__loader--hidden');
+            iframe.src = 'about:blank';
+            setTimeout(() => {
+                iframe.src = streamUrl;
+            }, 120);
+        });
+    }
+
+    if (iframe) {
+        iframe.addEventListener('load', () => {
+            if (iframe.src && iframe.src !== 'about:blank') {
+                if (loader) {
+                    loader.classList.add('live-modal__loader--hidden');
+                }
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('live-modal--active')) {
+            cerrarModalEmisionesEspeciales();
+        }
+    });
 }

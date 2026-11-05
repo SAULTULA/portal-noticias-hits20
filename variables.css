@@ -1,0 +1,74 @@
+/* =============================================================
+   VARIABLES GLOBALES DEL SISTEMA DE DISEÑO (DESIGN SYSTEM)
+   Portal de Noticias Hits 20
+   ============================================================= */
+
+:root {
+    /* Paleta de Colores Primarios y Acentos */
+    --color-primary: #d9534f;
+    --color-primary-dark: #b52b27;
+    --color-primary-light: #ff7675;
+    --color-primary-glow: rgba(217, 83, 79, 0.4);
+
+    /* Estado En Vivo / Emisiones Especiales */
+    --color-live: #e50914;
+    --color-live-light: #ff3344;
+    --color-live-glow: rgba(229, 9, 20, 0.6);
+    --color-live-pulse: rgba(229, 9, 20, 0.85);
+
+    /* Fondos y Superficies */
+    --color-bg-body: #f4f6f9;
+    --color-bg-dark: #1a1a1a;
+    --color-bg-darker: #121212;
+    --color-bg-card: #242424;
+    --color-bg-surface: #ffffff;
+    --color-bg-overlay: rgba(0, 0, 0, 0.84);
+
+    /* Textos */
+    --color-text-main: #333333;
+    --color-text-light: #ffffff;
+    --color-text-muted: rgba(255, 255, 255, 0.7);
+    --color-text-subtle: #888888;
+
+    /* Bordes y Límites */
+    --color-border-subtle: rgba(255, 255, 255, 0.15);
+    --color-border-focus: rgba(255, 255, 255, 0.35);
+    --color-border-card: #e0e0e0;
+
+    /* Espaciados Sistemáticos */
+    --space-2xs: 4px;
+    --space-xs: 8px;
+    --space-sm: 12px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+
+    /* Tipografía y Escalas */
+    --font-family-base: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-size-xs: clamp(0.7rem, 0.65rem + 0.25vw, 0.75rem);
+    --font-size-sm: clamp(0.8rem, 0.75rem + 0.3vw, 0.9rem);
+    --font-size-base: clamp(0.95rem, 0.9rem + 0.35vw, 1.05rem);
+    --font-size-title: clamp(1.1rem, 1rem + 0.6vw, 1.35rem);
+    --font-size-heading: clamp(1.5rem, 1.2rem + 1vw, 2.2rem);
+
+    /* Bordes Redondeados */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+
+    /* Transiciones y Sombras */
+    --transition-fast: 0.2s ease;
+    --transition-base: 0.3s ease;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+    --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 35px rgba(229, 9, 20, 0.25);
+
+    /* Índices de Apilamiento (Z-Index) */
+    --z-index-base: 1;
+    --z-index-sticky: 100;
+    --z-index-player: 9000;
+    --z-index-modal: 10000;
+}
+

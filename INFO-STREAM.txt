@@ -1,0 +1,16 @@
+Stream Encoder Settings (Icecast)
+
+Server address
+link.zeno.fm
+################
+Port
+80
+################
+Mount point
+7nnbnqmqnf8vv
+################
+Username
+source
+################
+Mount password
+kCL5X0oQ

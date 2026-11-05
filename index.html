@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Portal de Noticias y Radio en Vivo de Hits 20 Radio - Noticias provinciales, nacionales e internacionales de San Luis, Argentina.">
     <title>Portal de Noticias &amp; Radio En Vivo</title>
+    <link rel="stylesheet" href="variables.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="manifest" href="manifest.json">
     <style>
@@ -91,8 +92,25 @@
                 <h1>Portal de Noticias</h1>
             </div>
 
-            <!-- Derecha: Redes Sociales -->
+            <!-- Derecha: Redes Sociales y Emisiones Especiales -->
             <div class="header-socials">
+                <!-- Emisiones Especiales (Transmisión en Vivo) -->
+                <button type="button" 
+                        id="btn-emisiones-especiales" 
+                        class="header-social-btn header-social-btn--action" 
+                        title="Emisiones Especiales - Hits 20 Transmisión en Vivo" 
+                        aria-label="Abrir transmisión especial en vivo Hits 20"
+                        aria-haspopup="dialog"
+                        aria-controls="modal-emision-especial">
+                    <div class="social-icon-box live-water">
+                        <span class="live-water__pulse" aria-hidden="true"></span>
+                        <svg class="live-water__icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M17 10.5V7a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-3.5l4 4V6.5l-4 4zM10 14.5v-5l4 2.5-4 2.5z"/>
+                        </svg>
+                    </div>
+                    <span>Especiales</span>
+                </button>
+
                 <!-- Facebook -->
                 <a href="https://www.facebook.com/hits20radio/" target="_blank" rel="noopener noreferrer" class="header-social-btn">
                     <div class="social-icon-box fb-water">
@@ -135,6 +153,11 @@
             </div>
         </div>
     </header>
+
+    <!-- BANNER PUBLICITARIO 970x120 -->
+    <div class="news-banner">
+        <img src="970X120%20(13).gif" alt="Publicidad" width="970" height="120">
+    </div>
 
     <div class="main-container">
         <!-- ÁREA CENTRAL DE NOTICIAS -->
@@ -227,7 +250,11 @@
 
             <!-- Espacios para Pauta -->
             <div class="ads" id="ads-container">
-                <!-- Se inyectarán dinámicamente las publicidades desde el JS -->
+                <!-- Publicidad fija 300x300 -->
+                <div class="ad-static">
+                    <img src="300x300%20(14).gif" alt="Publicidad" width="300" height="300">
+                </div>
+                <!-- Se inyectarán dinámicamente las demás publicidades desde el JS -->
             </div>
 
             <!-- Inicio de Sesión -->
@@ -260,6 +287,58 @@
             <button id="btn-admin-ads" style="background: transparent; border: none; color: #555; cursor: pointer; font-size: 0.9rem;" title="Gestionar Publicidades">⚙️</button>
         </div>
     </footer>
+
+    <!-- VENTANA EMERGENTE: EMISIONES ESPECIALES (TRANSMISIÓN EN VIVO) -->
+    <div id="modal-emision-especial" 
+         class="live-modal" 
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="live-modal-title" 
+         aria-hidden="true">
+        <div class="live-modal__backdrop" id="live-modal-backdrop"></div>
+        <div class="live-modal__container">
+            <div class="live-modal__header">
+                <div class="live-modal__brand">
+                    <span class="live-modal__badge">
+                        <span class="live-modal__badge-pulse" aria-hidden="true"></span>
+                        EN VIVO
+                    </span>
+                    <h2 id="live-modal-title" class="live-modal__title">Hits 20 - Transmisión en Vivo</h2>
+                </div>
+                <div class="live-modal__actions">
+                    <button type="button" 
+                            id="btn-recargar-live" 
+                            class="live-modal__btn live-modal__btn--reload" 
+                            title="Recargar transmisión" 
+                            aria-label="Recargar transmisión">
+                        <svg viewBox="0 0 24 24" class="live-modal__btn-icon" aria-hidden="true">
+                            <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                        </svg>
+                    </button>
+                    <button type="button" 
+                            id="btn-cerrar-live" 
+                            class="live-modal__btn live-modal__btn--close" 
+                            title="Cerrar ventana" 
+                            aria-label="Cerrar ventana emergente">&times;</button>
+                </div>
+            </div>
+            <div class="live-modal__body">
+                <div class="live-modal__loader" id="live-modal-loader" aria-hidden="true">
+                    <div class="live-modal__spinner"></div>
+                    <span class="live-modal__loader-text">Cargando transmisión en vivo...</span>
+                </div>
+                <iframe id="live-modal-iframe" 
+                        class="live-modal__iframe" 
+                        src="" 
+                        data-src="https://deportes-umber.vercel.app/" 
+                        title="Hits 20 - Transmisión en Vivo" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" 
+                        allowfullscreen 
+                        loading="lazy">
+                </iframe>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL DE NOTICIA COMPLETA -->
     <div id="modal-noticia" class="modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;">
@@ -464,6 +543,15 @@
             if (searchInput) {
                 searchInput.addEventListener('keyup', function () {
                     if (typeof filterNews === 'function') filterNews();
+                });
+            }
+
+            const btnEmisionEspecial = document.getElementById('btn-emisiones-especiales');
+            if (btnEmisionEspecial) {
+                btnEmisionEspecial.addEventListener('click', function () {
+                    if (typeof abrirModalEmisionesEspeciales === 'function') {
+                        abrirModalEmisionesEspeciales();
+                    }
                 });
             }
         });
