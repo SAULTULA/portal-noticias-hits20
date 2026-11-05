@@ -1,7 +1,8 @@
-const CACHE_NAME = 'hits20-cache-v6';
+const CACHE_NAME = 'hits20-cache-v7';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/variables.css',
   '/css/styles.css',
   '/js/main.js',
   '/logo.png'

@@ -130,12 +130,19 @@ body {
     cursor: pointer;
     font-family: inherit;
     color: inherit;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .live-water {
     position: relative;
-    background-color: rgba(229, 9, 20, 0.14);
-    border-color: rgba(229, 9, 20, 0.45);
+    background-color: rgba(229, 9, 20, 0.18);
+    border-color: rgba(229, 9, 20, 0.55);
+}
+
+.live-water svg,
+.live-water svg path {
+    opacity: 0.95 !important;
 }
 
 .live-water__icon {
