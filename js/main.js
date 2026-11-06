@@ -989,6 +989,7 @@ function cerrarModalEmisionesEspeciales() {
     const modal = document.getElementById('modal-emision-especial');
     const iframe = document.getElementById('live-modal-iframe');
     const loader = document.getElementById('live-modal-loader');
+    const cardFlotante = document.getElementById('card-emision-especial');
     const btnAbrir = document.getElementById('btn-emisiones-especiales');
 
     if (!modal) return;
@@ -1006,12 +1007,16 @@ function cerrarModalEmisionesEspeciales() {
         loader.classList.remove('live-modal__loader--hidden');
     }
 
-    if (btnAbrir) {
+    if (cardFlotante) {
+        cardFlotante.focus();
+    } else if (btnAbrir) {
         btnAbrir.focus();
     }
 }
 
 function inicializarModalEmisionesEspeciales() {
+    const cardFlotante = document.getElementById('card-emision-especial');
+    const btnCerrarCard = document.getElementById('btn-cerrar-live-card');
     const btnAbrir = document.getElementById('btn-emisiones-especiales');
     const modal = document.getElementById('modal-emision-especial');
     const btnCerrar = document.getElementById('btn-cerrar-live');
@@ -1021,6 +1026,28 @@ function inicializarModalEmisionesEspeciales() {
     const loader = document.getElementById('live-modal-loader');
 
     if (!modal) return;
+
+    // Manejo de la card flotante
+    if (cardFlotante) {
+        cardFlotante.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-cerrar-live-card')) return;
+            abrirModalEmisionesEspeciales();
+        });
+
+        cardFlotante.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                abrirModalEmisionesEspeciales();
+            }
+        });
+    }
+
+    if (btnCerrarCard && cardFlotante) {
+        btnCerrarCard.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cardFlotante.classList.add('live-floating-card--hidden');
+        });
+    }
 
     if (btnAbrir) {
         btnAbrir.addEventListener('click', abrirModalEmisionesEspeciales);

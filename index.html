@@ -92,25 +92,8 @@
                 <h1>Portal de Noticias</h1>
             </div>
 
-            <!-- Derecha: Redes Sociales y Emisiones Especiales -->
+            <!-- Derecha: Redes Sociales -->
             <div class="header-socials">
-                <!-- Emisiones Especiales (Transmisión en Vivo) -->
-                <button type="button" 
-                        id="btn-emisiones-especiales" 
-                        class="header-social-btn header-social-btn--action" 
-                        title="Emisiones Especiales - Hits 20 Transmisión en Vivo" 
-                        aria-label="Abrir transmisión especial en vivo Hits 20"
-                        aria-haspopup="dialog"
-                        aria-controls="modal-emision-especial">
-                    <div class="social-icon-box live-water">
-                        <span class="live-water__pulse" aria-hidden="true"></span>
-                        <svg class="live-water__icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M17 10.5V7a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-3.5l4 4V6.5l-4 4zM10 14.5v-5l4 2.5-4 2.5z"/>
-                        </svg>
-                    </div>
-                    <span>Especiales</span>
-                </button>
-
                 <!-- Facebook -->
                 <a href="https://www.facebook.com/hits20radio/" target="_blank" rel="noopener noreferrer" class="header-social-btn">
                     <div class="social-icon-box fb-water">
@@ -287,6 +270,35 @@
             <button id="btn-admin-ads" style="background: transparent; border: none; color: #555; cursor: pointer; font-size: 0.9rem;" title="Gestionar Publicidades">⚙️</button>
         </div>
     </footer>
+
+    <!-- CARD FLOTANTE: TRANSMISIÓN EN VIVO DEL RALLY -->
+    <aside id="card-emision-especial" 
+           class="live-floating-card" 
+           role="button" 
+           tabindex="0" 
+           aria-label="Mira la transmisión en vivo del Rally"
+           aria-haspopup="dialog"
+           aria-controls="modal-emision-especial">
+        <div class="live-floating-card__header">
+            <div class="live-floating-card__badge">
+                <span class="live-floating-card__dot" aria-hidden="true"></span>
+                <span class="live-floating-card__status">EN VIVO</span>
+            </div>
+            <button type="button" 
+                    id="btn-cerrar-live-card" 
+                    class="live-floating-card__close" 
+                    title="Ocultar aviso" 
+                    aria-label="Cerrar aviso flotante">&times;</button>
+        </div>
+        <div class="live-floating-card__content">
+            <div class="live-floating-card__icon-box" aria-hidden="true">
+                <svg class="live-floating-card__icon" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502-5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+            </div>
+            <p class="live-floating-card__text">Mira la transmisión en vivo del Rally</p>
+        </div>
+    </aside>
 
     <!-- VENTANA EMERGENTE: EMISIONES ESPECIALES (TRANSMISIÓN EN VIVO) -->
     <div id="modal-emision-especial" 
@@ -546,12 +558,21 @@
                 });
             }
 
-            const btnEmisionEspecial = document.getElementById('btn-emisiones-especiales');
-            if (btnEmisionEspecial) {
-                btnEmisionEspecial.addEventListener('click', function () {
+            const cardEmisionEspecial = document.getElementById('card-emision-especial');
+            if (cardEmisionEspecial) {
+                cardEmisionEspecial.addEventListener('click', function (e) {
+                    if (e.target.closest('#btn-cerrar-live-card')) return;
                     if (typeof abrirModalEmisionesEspeciales === 'function') {
                         abrirModalEmisionesEspeciales();
                     }
+                });
+            }
+
+            const btnCerrarCard = document.getElementById('btn-cerrar-live-card');
+            if (btnCerrarCard && cardEmisionEspecial) {
+                btnCerrarCard.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    cardEmisionEspecial.classList.add('live-floating-card--hidden');
                 });
             }
         });

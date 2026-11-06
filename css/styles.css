@@ -896,6 +896,137 @@ body {
 }
 
 /* =============================================================
+   CARD FLOTANTE: TRANSMISIÓN EN VIVO DEL RALLY (BEM)
+   ============================================================= */
+.live-floating-card {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: var(--z-index-player, 9000);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px 16px 10px 16px;
+    background-color: rgba(14, 14, 14, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid #ff2a44;
+    border-radius: 20px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 16px rgba(255, 42, 68, 0.45);
+    cursor: pointer;
+    user-select: none;
+    max-width: 320px;
+    transition: transform var(--transition-fast, 0.2s ease), 
+                box-shadow var(--transition-fast, 0.2s ease), 
+                border-color var(--transition-fast, 0.2s ease),
+                opacity var(--transition-base, 0.3s ease),
+                visibility var(--transition-base, 0.3s ease);
+    animation: liveCardSubtleFloat 3.5s ease-in-out infinite;
+}
+
+.live-floating-card:hover {
+    transform: translateY(-3px) scale(1.02);
+    border-color: #ff4d6d;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.75), 0 0 24px rgba(255, 42, 68, 0.75);
+}
+
+.live-floating-card--hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(0.9) translateY(10px) !important;
+}
+
+.live-floating-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.live-floating-card__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.live-floating-card__dot {
+    width: 7px;
+    height: 7px;
+    background-color: #ff2a44;
+    border-radius: var(--radius-full, 9999px);
+    box-shadow: 0 0 6px #ff2a44;
+    animation: liveBadgeDot 1.2s ease-in-out infinite alternate;
+}
+
+.live-floating-card__status {
+    color: #ff3b5c;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.live-floating-card__close {
+    background: transparent;
+    border: none;
+    color: #888888;
+    font-size: 1.15rem;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color var(--transition-fast, 0.2s ease), transform var(--transition-fast, 0.2s ease);
+}
+
+.live-floating-card__close:hover {
+    color: #ffffff;
+    transform: scale(1.2);
+}
+
+.live-floating-card__content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.live-floating-card__icon-box {
+    width: 28px;
+    height: 28px;
+    background-color: #ff0000;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(255, 0, 0, 0.4);
+}
+
+.live-floating-card__icon {
+    width: 16px;
+    height: 16px;
+    color: #ffffff;
+}
+
+.live-floating-card__text {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(0.78rem, 0.74rem + 0.2vw, 0.86rem);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0.2px;
+}
+
+@keyframes liveCardSubtleFloat {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+/* =============================================================
    MODAL DE EMISIONES ESPECIALES / TRANSMISIÓN EN VIVO (BEM)
    ============================================================= */
 .live-modal {
@@ -1216,5 +1347,13 @@ body {
     .live-modal__badge {
         font-size: 0.65rem;
         padding: 3px 6px;
+    }
+
+    /* Card Flotante Rally Móvil */
+    .live-floating-card {
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        max-width: calc(100% - 32px);
     }
 }
