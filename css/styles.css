@@ -270,10 +270,23 @@ body {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* Control estricto de imágenes para evitar desbordes */
-.card img, .card-noticia img {
+/* Control estricto de imágenes y miniaturas para evitar desbordes */
+.card-image-box {
     width: 100%;
-    height: 180px;
+    height: 190px;
+    position: relative;
+    overflow: hidden;
+    background-color: #111111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.card img, .card-noticia img, .card-image-box img {
+    width: 100%;
+    height: 190px !important;
+    max-height: 190px !important;
     object-fit: cover !important; /* Mantiene proporción recortando excedente sin deformar */
     object-position: center;
     display: block;
@@ -900,8 +913,10 @@ body {
    ============================================================= */
 .live-floating-card {
     position: fixed;
-    bottom: 24px;
-    left: 24px;
+    top: 145px;
+    right: 24px;
+    bottom: auto;
+    left: auto;
     z-index: var(--z-index-player, 9000);
     display: flex;
     flex-direction: column;
@@ -1351,9 +1366,10 @@ body {
 
     /* Card Flotante Rally Móvil */
     .live-floating-card {
-        bottom: 16px;
-        left: 16px;
-        right: 16px;
-        max-width: calc(100% - 32px);
+        top: 155px;
+        bottom: auto;
+        right: 12px;
+        left: auto;
+        max-width: calc(100% - 24px);
     }
 }

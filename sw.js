@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hits20-cache-v8';
+const CACHE_NAME = 'hits20-cache-v11';
 const urlsToCache = [
   '/',
   '/index.html',
